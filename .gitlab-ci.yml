@@ -4,7 +4,7 @@ stages:
 sonarqube:
   stage: sonarqube
   image:
-    name: sonarsource/sonar-scanner-cli:4.6
+    name: sonarsource/sonar-scanner-cli:latest
     entrypoint: [""]
   variables:
     # Defines the location of the analysis task cache
