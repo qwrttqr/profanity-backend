@@ -49,7 +49,7 @@ class TextAnalyzer:
         ATTENTION
             The model for predictions got from here https://huggingface.co/cointegrated/rubert-tiny-toxicity
         """
-
+        print(text)
         text = ' '.join(self.__text_preparator.prepare_text(text, basing=False))
         print(text)
         with torch.no_grad():

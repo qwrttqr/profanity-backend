@@ -165,8 +165,9 @@ class TextPreparation:
         Returns:
             list: Words array.
         """
-
-        text_string = text[:text.rfind('--') + 1]
+        if ('--' in text):
+            text = text[:text.rfind('--') + 1]
+        text_string = text
         space_pattern = '\s+'
         line_break_pattern = '\n+'
         giant_url_regex = ('http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|'
@@ -177,7 +178,6 @@ class TextPreparation:
         email_regex = "(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|\"(?:[\\x01-\\x08\\x0b\\x0c\\x0e-\\x1f\\x21\\x23-\\x5b\\x5d-\\x7f]|\\\\[\\x01-\\x09\\x0b\\x0c\\x0e-\\x7f])*\")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\\x01-\\x08\\x0b\\x0c\\x0e-\\x1f\\x21-\\x5a\\x53-\\x7f]|\\\\[\\x01-\\x09\\x0b\\x0c\\x0e-\\x7f])+)\\])"
 
         # See https://uibakery.io/regex-library/email-regex-python
-
         parsed_text = re.sub(space_pattern, ' ', text_string)
         parsed_text = re.sub(line_break_pattern,' ', parsed_text)
         parsed_text = re.sub(giant_url_regex, '', parsed_text)
