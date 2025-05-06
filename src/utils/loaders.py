@@ -1,6 +1,8 @@
 import joblib
 import json
+from .gen_n_grams import generate_n_grams
 from pathlib import Path
+
 
 def get_project_root():
     """Returns the absolute path to the project root directory"""
@@ -44,7 +46,9 @@ def n_grams_load():
             return json.load(f)
         
     except FileNotFoundError:
-        raise FileNotFoundError(f"n_grams file not found at: {n_grams_path}")
+
+        print('n-grams file not found. Started generation....')
+        generate_n_grams()
     
     except json.JSONDecodeError:
         raise ValueError("Invalid JSON format in n_grams file")
