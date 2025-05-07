@@ -3,6 +3,8 @@ from utils import model_load, vectorizer_load, TextPreparation
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from fastapi import FastAPI
 from fastapi import Query
+from fastapi import FastAPI, Query
+from fastapi.middleware.cors import CORSMiddleware
 class TextAnalyzer:
     """
     Analyzing text on swear words and calculates text toxicity.
@@ -79,12 +81,22 @@ analyzer = TextAnalyzer()
 
 app = FastAPI()
 
+# Костыль, не знаю как сделать по-другому
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods (GET, POST, etc.)
+    allow_headers=["*"],  # Allows all headers
+)
+
+
 @app.get("/analyze")
 def analyze_text_get(text: str = Query(..., description="Text to analyze"), threshold: float = 0.12):
     """
     Analyze text toxicity via GET request.
     Parameters:
-        text: std - text, that should be analyzed.
+        text: str - text, that should be analyzed.
         threshold: float - threshold for mark text as a toxic.
     Returns:
         text: text which was analyzed, label: toxicity label, profanity: do text has or not profanity words. 
@@ -92,3 +104,4 @@ def analyze_text_get(text: str = Query(..., description="Text to analyze"), thre
     class_ = analyzer.analyze_toxicity(text, return_proba=False, threshold=threshold)
     has_profanity = any(i for i in analyzer.predict_profanity(text))
     return {"text": text, "label": 'Текст не ок' if class_ == 1 else 'Текст ок', "profanity" : "Есть маты" if has_profanity else "Матов нет"}
+
