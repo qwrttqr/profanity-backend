@@ -1,5 +1,4 @@
 from fastapi import APIRouter
-
 from src.api.routes import analyze
 
 api_router = APIRouter()

@@ -10,81 +10,61 @@ def get_project_root() -> Path:
     return Path(__file__).parent.parent.parent
 
 
-def load():
+n_grams_path = get_project_root() / 'files' / 'n_grams.json'
+vectorizer_path = get_project_root() / 'models' / 'vectorizer.joblib'
+model_path = get_project_root() / 'models' / 'model.joblib'
+deobfuscation_table_path = get_project_root() / 'files' / \
+    'deobfuscation_table.json'
+
+files = {
+    'vectorizer_model': None,
+    'ML_model': None,
+    'n-grams': None,
+    'deobfuscation_table': None
+}
+
+
+def load_file(
+    file_path: Path,
+    loader: callable,
+    file_type: str = 'file',
+    binary: bool = False
+):
     '''
-    Loads the vectorizer model from models/ directory.
-    Loads the ML model from models / directory.
-    Loads n-grams data from files/ directory.
-    Loads deobfuscation table from files / directory.
+    Generic file loader with error handling.
+
+    Args:
+        file_path: Path to the file
+        loader: Function to load the file (joblib.load/json.load)
+        file_type: Description of file type for error messages
+        binary: Whether to open in binary mode
+
+    Returns:
+        Loaded file content
+
+    Raises:
+        FileNotFoundError: If file doesn't exist
+        ValueError: For JSON decode errors
+        RuntimeError: For other loading errors
     '''
 
-    n_grams_path = get_project_root() / 'files' / 'n_grams.json'
-    vectorizer_path = get_project_root() / 'models' / 'vectorizer.joblib'
-    model_path = get_project_root() / 'models' / 'model.joblib'
-    deobfuscation_table_path = get_project_root() / 'files' / \
-        'deobfuscation_table.json'
-
-    files = {
-        'vectorizer_model': None,
-        'ML_model': None,
-        'n-grams': None,
-        'deobfuscation_table': None
-    }
-
     try:
-        with open(vectorizer_path, 'rb') as f:  # Note 'rb' mode for binary files
-            files['vectorizer_model'] = joblib.load(f)
+        mode = 'rb' if binary else 'r'
+        encoding = None if binary else 'utf-8'
+
+        with open(file_path, mode, encoding=encoding) as f:
+            return loader(f)
 
     except FileNotFoundError:
-        raise FileNotFoundError(
-            f'Vectorizer file not found at: {vectorizer_path}')
-
-    except Exception as e:
-        raise RuntimeError(f'Error loading vectorizer: {str(e)}')
-
-
-    try:
-        with open(model_path, 'rb') as f:  # Note 'rb' mode for binary files
-            files['ML_model'] = joblib.load(f)
-
-    except FileNotFoundError:
-        raise FileNotFoundError(f'Model file not found at: {model_path}')
-
-    except Exception as e:
-        raise RuntimeError(f'Error loading model: {str(e)}')
-
-
-    try:
-        with open(n_grams_path, 'r', encoding='utf-8') as f:
-            files['n-grams'] = json.load(f)
-
-    except FileNotFoundError:
-
-        print('n-grams file not found. Started generation....')
-        generate_n_grams()
-
+        raise FileNotFoundError(f'{file_type} file not found at: {file_path}')
     except json.JSONDecodeError:
-        raise ValueError('Invalid JSON format in n_grams file')
-
+        raise ValueError(f'Invalid JSON format in {file_type} file')
     except Exception as e:
-        raise RuntimeError(f'Error loading n_grams: {str(e)}')
-    
-
-    try:
-        with open(deobfuscation_table_path, 'r', encoding='utf-8') as f:
-            files['deobfuscation_table'] = json.load(f)
-
-    except FileNotFoundError:
-        raise FileNotFoundError(
-            f'deobfuscation_table file not found at: {deobfuscation_table_path}')
-
-    except json.JSONDecodeError:
-        raise ValueError('Invalid JSON format in deobfuscation_table file')
-
-    except Exception as e:
-        raise RuntimeError(f'Error loading deobfuscation_table: {str(e)}')
-
-    return files
+        raise RuntimeError(f'Error loading {file_type}: {str(e)}')
 
 
-files = load()
+files['vectorizer_model'] = load_file(vectorizer_path, joblib.load, 'rb', True)
+files['ML_model'] = load_file(model_path, joblib.load, 'rb', True)
+files['n-grams'] = load_file(n_grams_path, json.load, 'r', False)
+files['deobfuscation_table'] = load_file(
+    deobfuscation_table_path, json.load, 'r', False)

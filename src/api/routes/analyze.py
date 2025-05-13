@@ -1,12 +1,12 @@
 from fastapi import APIRouter
 from fastapi import Query
-
 from src.utils.text_analyzer import text_analyzer
 
-router = APIRouter(prefix = '/analyze', tags= ['profanity'])
+router = APIRouter(prefix='/analyze', tags=['profanity'])
+
 
 @router.get('/')
-def analyze_text_get(text: str = Query(..., description="Text to analyze"), threshold: float = 0.12):
+def analyze_text_get(text: str = Query(..., description="Text to analyze"), threshold: float = 0.12) -> dict[str, str]:
     """
     Analyze text toxicity via GET request.
     Parameters:
