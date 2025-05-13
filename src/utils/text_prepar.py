@@ -1,7 +1,8 @@
-from utils import deobfuscation_table_load, n_grams_load
+import re
+from . import files
 from pymorphy2 import MorphAnalyzer
 from nltk.stem.snowball import SnowballStemmer
-import re
+
 
 
 class TextPreparation:
@@ -10,22 +11,24 @@ class TextPreparation:
     Methods:
         prepare_text(text: str, word_basing_method: str = 'lemmatization', deobfuscation: bool = True): prepares text step by step.
         1 step - raw preparing(splitting by spaces, delete urls, replace ['Ё', 'ё'] -> e based on regexp, remove punctuation and special characters, lowecase all).
-        2 step - deobfuscation(make replacements based on deobfuscation table(e.g. М4рия -> мария)). The replacements takes place in 2 stages:
-            2.1 - non_single_char replacements. 
-            2.2 - Unambiguous replacement(list lenght in table equal 1).
-            2.3 - Ambiguous replacement(list lenght in table > 1).
-            *stage 2.3 is happening with trying to find best n-gramm(n-grams with max lenght or n-grams with min occurence in case with equal n-gram lenght).
-        3 step - schrinking(delete all 3 and more letters in row).
-        4 step - clearing(delete all non-letters symbols left after deobfuscation).
-        5 step - base word forming(based on word basing method).
+        2 step - schrinking(delete all 3 and more letters in row).
+        3 step - deobfuscation(make replacements based on deobfuscation table(e.g. М4рия -> мария)). The replacements takes place in 2 stages:
+            3.1 - non_single_char replacements. 
+            3.2 - Unambiguous replacement(list lenght in table equal 1).
+            3.3 - Ambiguous replacement(list lenght in table > 1).
+            *stage 3.3 is happening with trying to find best n-gramm(n-grams with max lenght or n-grams with min occurence in case with equal n-gram lenght).
+        4 step - schrinking(delete all 3 and more letters in row).
+        5 step - clearing(delete all non-letters symbols left after deobfuscation).
+        6 step - base word forming(based on word basing method).
     Warning - 3rd step is implemented by pymorphy2 and nltk snowballStemmer, see the docs for details 
         Returns list of deobfuscated lemmatized strings.
     """
+
     def __init__(self):
-        self.__deobfuscation_table = deobfuscation_table_load()
+        self.__deobfuscation_table = files['deobfuscation_table']
         self.__morpher = MorphAnalyzer()
-        self.__stemmer = SnowballStemmer(language = 'russian')
-        self.__n_grams = n_grams_load()
+        self.__stemmer = SnowballStemmer(language='russian')
+        self.__n_grams = files['n-grams']
 
     def prepare_text(self, text: str, word_basing_method: str = 'lemmatization', deobfuscation: bool = True, basing: bool = True):
         """
@@ -43,11 +46,10 @@ class TextPreparation:
         prepared_words = []
         for item in pre_cleared:
             deobfuscated = item
-
-            if deobfuscation: # If we do deobfuscation
+            schrinked = self.__delete_long_vowels(deobfuscated)
+            if deobfuscation:  # If we do deobfuscation
                 deobfuscated = self.__deobfuscate(item)
 
-            schrinked = self.__delete_long_vowels(deobfuscated)
             cleared = self.__get_letters_only(schrinked)
             cleared = list(cleared)
 
@@ -57,14 +59,14 @@ class TextPreparation:
             cleared = ''.join(cleared)
 
             if basing:
-                done_word = self.__get_base_form(''.join(cleared), word_basing_method)
+                done_word = self.__get_base_form(
+                    ''.join(cleared), word_basing_method)
             else:
                 done_word = ''.join(cleared)
 
             prepared_words.append(done_word)
 
         return prepared_words
-
 
     def __deobfuscate(self, word: str):
         """
@@ -77,7 +79,7 @@ class TextPreparation:
         deobfuscation_table_single = self.__deobfuscation_table['single_char_seq']
         deobfuscation_table_non_single = self.__deobfuscation_table['non_single_char_seq']
 
-        for key,value in deobfuscation_table_non_single.items():
+        for key, value in deobfuscation_table_non_single.items():
             word = word.replace(key, value[0])
 
         word = list(word)
@@ -88,10 +90,10 @@ class TextPreparation:
 
                     value = deobfuscation_table_single[word[i]][0]
                     has_right_vowel = False
-                    has_left_vowel  = False
+                    has_left_vowel = False
 
                     if i > 0:
-                        if word[i - 1].isalpha(): 
+                        if word[i - 1].isalpha():
                             has_left_vowel = True
 
                     if i < len(word) - 1:
@@ -107,10 +109,10 @@ class TextPreparation:
 
                     values = deobfuscation_table_single[word[i]]
                     has_right_vowel = False
-                    has_left_vowel  = False
+                    has_left_vowel = False
 
                     if i > 0:
-                        if word[i - 1].isalpha(): 
+                        if word[i - 1].isalpha():
                             has_left_vowel = True
 
                     if i < len(word) - 1:
@@ -118,14 +120,15 @@ class TextPreparation:
                             has_right_vowel = True
 
                     if has_left_vowel or has_right_vowel:
-                        candidate = self.__find_best_n_gram(''.join(word), values, i)
+                        candidate = self.__find_best_n_gram(
+                            ''.join(word), values, i)
                         if candidate:
                             word[i] = word[i].replace(word[i], candidate)
 
         word = ''.join(word)
 
         return word
-    
+
     def __find_best_n_gram(self, word: str, candidates: list, position: int):
         """
         Finds best n_gram for given word.
@@ -144,7 +147,8 @@ class TextPreparation:
             for l in range(position + 1):
                 for r in range(position, len(word)):
 
-                    n_gramma = word[l:position] + candidate + word[position + 1: r + 1]
+                    n_gramma = word[l:position] + \
+                        candidate + word[position + 1: r + 1]
 
                     if n_gramma in self.__n_grams.keys():
                         if len(n_gramma) > best_lenght:
@@ -158,10 +162,12 @@ class TextPreparation:
 
         return best_candidate
 
-    def __raw_preparing(self, text: str):
+    def __raw_preparing(self, text: str) -> list[str]:
         """
         Doing raw string preparing. Deletes url's, replaces letters, lowercasing all and splitting given text by spaces.
+
         Remove message footer(sign in yandex).
+
         Returns:
             list: Words array.
         """
@@ -171,7 +177,7 @@ class TextPreparation:
         space_pattern = '\s+'
         line_break_pattern = '\n+'
         giant_url_regex = ('http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|'
-        '[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+')  
+                           '[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+')
 
         # Regex to match most common email formats
         # See https://uibakery.io/regex-library/email-regex-python for detials (RFC 5322)
@@ -179,9 +185,9 @@ class TextPreparation:
 
         # See https://uibakery.io/regex-library/email-regex-python
         parsed_text = re.sub(space_pattern, ' ', text_string)
-        parsed_text = re.sub(line_break_pattern,' ', parsed_text)
+        parsed_text = re.sub(line_break_pattern, ' ', parsed_text)
         parsed_text = re.sub(giant_url_regex, '', parsed_text)
-        parsed_text = re.sub(email_regex,'', parsed_text)
+        parsed_text = re.sub(email_regex, '', parsed_text)
         parsed_text = parsed_text.replace('Ё', 'е')
         parsed_text = parsed_text.replace('ё', 'е')
         parsed_text = parsed_text.replace('_', ' ')
@@ -194,7 +200,7 @@ class TextPreparation:
         parsed_text = parsed_text.split()
 
         return parsed_text
-    
+
     def __get_base_form(self, word: str, word_basing_method: str = "lemmatization"):
         """
         Returning base form for word with method based on word_basing_method param.
@@ -206,12 +212,14 @@ class TextPreparation:
         if word_basing_method == 'lemmatization':
 
             return self.__morpher.parse(word)[0].normal_form
-        
+
         elif word_basing_method == 'stemming':
-            word = self.__morpher.parse(word)[0].normal_form
 
             return self.__stemmer.stem(word)
 
+        else:
+
+            return word
 
     def __delete_long_vowels(self, text: str):
         """
@@ -234,3 +242,6 @@ class TextPreparation:
             str: Word only with letters.
         """
         return re.sub(r'[^а-яё]', '', word)
+
+
+text_preparator = TextPreparation()

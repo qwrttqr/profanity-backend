@@ -1,2 +1,3 @@
-from .loaders import model_load, vectorizer_load, n_grams_load, deobfuscation_table_load
-from .text_prepar import TextPreparation
+from .load import files
+from .text_prepar import text_preparator
+from .text_analyzer import text_analyzer
