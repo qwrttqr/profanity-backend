@@ -28,7 +28,8 @@ class TextPreparation:
         self.__stemmer = SnowballStemmer(language='russian')
         self.__n_grams = files['n-grams']
 
-    def prepare_text(self, text: str, word_basing_method: str = 'lemmatization', deobfuscation: bool = True, basing: bool = True) -> list:
+    def prepare_text(self,
+                    text: str, word_basing_method: str = 'lemmatization', deobfuscation: bool = True, basing: bool = True) -> list:
         '''
         Prepares the text.
 
@@ -163,9 +164,9 @@ class TextPreparation:
         Returns:
             list: Words array.
         '''
+
         if ('--' in text):
             text = text[:text.rfind('--') + 1]
-        text_string = text
 
         patterns = {
             'whitespace': re.compile(r'\s+'),
@@ -185,7 +186,7 @@ class TextPreparation:
                 r'|\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}'
                 r'(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?'
                 r'|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a'
-                r'\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])"
+                r'\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])'
             )   
         }
 
@@ -206,10 +207,10 @@ class TextPreparation:
         for old, new in replacements.items():
             text = text.replace(old, new)
 
-        parsed_text = parsed_text.lower()
-        parsed_text = parsed_text.split()
-
-        return parsed_text
+        text = text.lower()
+        text = text.split()
+        
+        return text
 
     def __get_base_form(self, word: str, word_basing_method: str='lemmatization') -> str:
         '''

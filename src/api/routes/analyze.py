@@ -15,9 +15,12 @@ def analyze_text_get(text: str = Query(..., description="Text to analyze"), thre
     Returns:
         text: text which was analyzed, label: toxicity label, profanity: do text has or not profanity words. 
     """
+    
     class_ = text_analyzer.analyze_toxicity(
         text, return_proba=False, threshold=threshold)
+    
     has_profanity = any(i for i in text_analyzer.predict_profanity(text))
+
     return {
         "text": text,
         "label": 'Текст не ок' if class_ == 1 else 'Текст ок',

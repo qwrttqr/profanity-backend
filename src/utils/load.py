@@ -67,4 +67,5 @@ files['vectorizer_model'] = load_file(vectorizer_path, joblib.load, 'rb', True)
 files['ML_model'] = load_file(model_path, joblib.load, 'rb', True)
 files['n-grams'] = load_file(n_grams_path, json.load, 'r', False)
 files['deobfuscation_table'] = load_file(
-    deobfuscation_table_path, json.load, 'r', False)
+    deobfuscation_table_path, 
+    json.load, 'r', False)
