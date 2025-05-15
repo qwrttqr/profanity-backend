@@ -1,6 +1,8 @@
 import os
 import dotenv
 from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
 
 def connect_db():
     dotenv.load_dotenv()
@@ -13,6 +15,8 @@ def connect_db():
         return engine
     except:
         print('Error connection to db')
-    
+
 
 database_engine = connect_db()
+
+Session = sessionmaker(bind=database_engine)

@@ -56,7 +56,11 @@ def load_file(
             return loader(f)
 
     except FileNotFoundError:
-        raise FileNotFoundError(f'{file_type} file not found at: {file_path}')
+        if file_path == n_grams_path:
+            print('n-gramm file not found, generating...')
+            generate_n_grams()
+        else:
+            raise FileNotFoundError(f'{file_type} file not found at: {file_path}')
     except json.JSONDecodeError:
         raise ValueError(f'Invalid JSON format in {file_type} file')
     except Exception as e:
