@@ -1,3 +1,6 @@
+from typing import Dict
+
+from db_models.profanity_classes import profanity_label
 from .load import files
 from .text_prepar import text_preparator
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
@@ -7,7 +10,8 @@ import torch
 class TextAnalyzer:
     '''
     Analyzing text on swear words and calculates text toxicity.
-    For swear analytics we finding stemming of word. For  toxicity analytics finding lemmas
+    For swear analytics we finding stemming of word. For  toxicity analytics
+    finding lemmas.
 
     Methods:
     predict_profanity(input_text, threshold=0.5):
@@ -33,58 +37,90 @@ class TextAnalyzer:
         if torch.cuda.is_available():
             self.__model_toxicity.cuda()
 
-    def predict_profanity(self, input_text: str, threshold: float = 0.5):
+    def predict_profanity(self, input_text: str, threshold: float = 0.5) -> int:
+        '''
+        Predicts does text has profane words or not.
+
+        Args:
+            input_text: str - input text.
+            threshold: float - by default 0.5. Value between 0 and 1.
+            Based on that number text will be labeled as contain profanity.
+
+        Returns:
+
+        '''
+
         predictions = self.__get_predict(input_text)
         preds = [0 if prob <
-                 threshold else 1 for prob in predictions]
+                      threshold else 1 for prob in predictions]
 
-        return preds
+        return any(pred for pred in preds)
 
-    def predict_proba_profanity(self, input_text: str):
+    def predict_proba_profanity(self, input_text: str) -> dict:
         predictions = self.__get_predict(input_text)
 
         return predictions
 
-    def analyze_toxicity(self, text: str, aggregate: bool = True, return_proba: bool = True, threshold: float = 0.5) -> int:
+    def analyze(self, text: str, threshold: float = 0.5) -> dict[
+        str, dict | int]:
+        text_labels = self.__analyze_toxicity(text, threshold)
+        profanity_label = self.predict_profanity(text)
+
+        labels = {
+            'text_label': text_labels,
+            'profanity_label': profanity_label
+        }
+        return labels
+
+    def __analyze_toxicity(self, text: str, threshold: float) -> dict:
         '''
-        Calculate toxicity of a text (if aggregate=True) or a vector of toxicity aspects (if aggregate=False). If return_proba = True, return real number - probability of text ot be toxic.
-        If return_proba = False, returns class of a text(1 of toxic, 0 of non-toxic). Threshould should be from 0 to 1, this param controls border to mark text as toxic(if probability > threshould text is toxic).
+        Calculate toxicity of a text.
+        Returns dictinary of text aspects:
+            [toxic, insult, threat, dangerous]
+        Threshould should be from 0 to 1. This param controls border to mark.
 
         ATTENTION
             The model for predictions got from here https://huggingface.co/cointegrated/rubert-tiny-toxicity
         '''
+        text_before_processing = text
 
-        text = ' '.join(
-            self.__text_preparator.prepare_text(text, basing=False))
-        
+        text_after = ' '.join(
+            self.__text_preparator.prepare_text(text_before_processing,
+                                                basing=False))
+
+        text_after_processing = text_after
+
         with torch.no_grad():
-
             inputs = self.__tokenizer(
-                text, return_tensors='pt',
+                text_after_processing, return_tensors='pt',
                 truncation=True, padding=True).to(
                 self.__model_toxicity.device
-                )
-            
+            )
+
             proba = torch.sigmoid(
                 self.__model_toxicity(
-                **inputs
+                    **inputs
                 ).logits).cpu().numpy()
 
-        if isinstance(text, str):
+        if isinstance(text_after_processing, str):
             proba = proba[0]
 
-        if return_proba:
-            if aggregate:
-                return 1 - proba.T[0] * (1 - proba.T[-1])
+        probas = [1 - proba[0]] + list(proba)[1:]
+        probas = [int(i >= threshold) for i in probas]
 
-            return proba
-        else:
-            return int((1 - proba.T[0] * (1 - proba.T[-1])) > threshold)
+        text_labels = {
+            'toxic': probas[0],
+            'insult': probas[1],
+            'threat': probas[3],
+            'dangerous': probas[4]
+        }
+
+        return text_labels
 
     def __get_predict(self, input_text) -> list[int]:
         input_text = self.__text_preparator.prepare_text(
             input_text, word_basing_method='stemming')
-        
+
         vec_text = self.__vectorizer.transform(input_text)
         probabilities = self.__model_profanity.predict_proba(vec_text)[:, 1]
 

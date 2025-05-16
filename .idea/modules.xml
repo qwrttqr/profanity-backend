@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/profanity-neuro.iml" filepath="$PROJECT_DIR$/.idea/profanity-neuro.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/lms-service-profanity.iml" filepath="$PROJECT_DIR$/.idea/lms-service-profanity.iml" />
     </modules>
   </component>
 </project>
