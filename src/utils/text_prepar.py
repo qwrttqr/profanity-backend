@@ -46,6 +46,7 @@ class TextPreparation:
         for item in words:
             deobfuscated = item
             processed = self.__delete_long_vowels(deobfuscated)
+
             if deobfuscation:  # If we do deobfuscation
                 deobfuscated = self.__deobfuscate(item)
 
@@ -67,7 +68,7 @@ class TextPreparation:
 
         return processed_words
 
-    def __has_adjacent(chars: str, index):
+    def __has_adjacent(self, chars: list, index) -> bool:
         has_right_vowel = False
         has_left_vowel = False
 
