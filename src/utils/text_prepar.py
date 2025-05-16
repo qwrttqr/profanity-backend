@@ -29,7 +29,8 @@ class TextPreparation:
         self.__n_grams = files['n-grams']
 
     def prepare_text(self,
-                    text: str, word_basing_method: str = 'lemmatization', deobfuscation: bool = True, basing: bool = True) -> list:
+                     text: str, word_basing_method: str = 'lemmatization',
+                     deobfuscation: bool = True, basing: bool = True) -> list:
         '''
         Prepares the text.
 
@@ -37,10 +38,12 @@ class TextPreparation:
             text(str): text should be prepared.
             word_basing_method(str): which method of word basing we should use. Should be 'lemmatization' or 'stemming'.
             deobfuscation(bool): optional, whether we do deobfuscation. True by default.
-            basing(bool): optional, controls whether or not we doing lemmatization + stemming after text clearing. True by default.
+            basing(bool): optional, controls whether or not we doing lemmatization + stemming after text clearing.
+            True by default.
         Returns:
             list: Words after prepating
         '''
+
         words = self.__raw_preparing(text)
         processed_words = []
         for item in words:
@@ -73,8 +76,8 @@ class TextPreparation:
         has_left_vowel = False
 
         if index > 0:
-                if chars[index - 1].isalpha():
-                    has_left_vowel = True
+            if chars[index - 1].isalpha():
+                has_left_vowel = True
 
         if index < len(chars) - 1:
             if chars[index + 1].isalpha():
@@ -90,8 +93,10 @@ class TextPreparation:
             str: Deobfuscated word.
         '''
 
-        deobfuscation_table_single = self.__deobfuscation_table['single_char_seq']
-        deobfuscation_table_non_single = self.__deobfuscation_table['non_single_char_seq']
+        deobfuscation_table_single = self.__deobfuscation_table[
+            'single_char_seq']
+        deobfuscation_table_non_single = self.__deobfuscation_table[
+            'non_single_char_seq']
 
         for key, value in deobfuscation_table_non_single.items():
             word = word.replace(key, value[0])
@@ -123,7 +128,8 @@ class TextPreparation:
 
         return word
 
-    def __find_best_n_gram(self, word: str, candidates: list, position: int) -> None | str:
+    def __find_best_n_gram(self, word: str, candidates: list,
+                           position: int) -> None | str:
         '''
         Finds best n_gram for given word.
         Best means longest. If 2 or more n_grams fit - n_gram with the lowest amount will be chosen.
@@ -142,7 +148,7 @@ class TextPreparation:
                 for r in range(position, len(word)):
 
                     n_gramma = word[l:position] + \
-                        candidate + word[position + 1: r + 1]
+                               candidate + word[position + 1: r + 1]
 
                     if n_gramma in self.__n_grams.keys():
                         if len(n_gramma) > best_lenght:
@@ -188,7 +194,7 @@ class TextPreparation:
                 r'(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?'
                 r'|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a'
                 r'\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])'
-            )   
+            )
         }
 
         text = patterns['whitespace'].sub(' ', text)
@@ -210,10 +216,11 @@ class TextPreparation:
 
         text = text.lower()
         text = text.split()
-        
+
         return text
 
-    def __get_base_form(self, word: str, word_basing_method: str='lemmatization') -> str:
+    def __get_base_form(self, word: str,
+                        word_basing_method: str = 'lemmatization') -> str:
         '''
         Returning base form for word with method based on word_basing_method param.
 
@@ -256,4 +263,4 @@ class TextPreparation:
         return re.sub(r'[^а-яё]', '', word)
 
 
-text_preparator= TextPreparation()
+text_preparator = TextPreparation()

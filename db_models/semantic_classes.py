@@ -1,16 +1,20 @@
 from sqlalchemy.orm import Mapped
-from .base_class import DeclarativeBase
+from sqlalchemy.testing.schema import mapped_column
+
+from .base_class import Base
 from sqlalchemy.orm import relationship
 
 
-class semantic_label(DeclarativeBase):
+class SemanticClasses(Base):
     __tablename__ = 'semantic_classes'
-    id: Mapped[int] = relationship(back_populates='semantic_id',
-                                   primary_key=True, autoincrement=True)
-    toxic_class: Mapped[int]
-    insult_class: Mapped[int]
-    threat_class: Mapped[int]
-    dangereous_class: Mapped[int]
+    id: Mapped[int] = mapped_column(primary_key=True,
+                                    autoincrement=True)
+    toxic_class: Mapped[int] = mapped_column(nullable=False)
+    insult_class: Mapped[int] = mapped_column(nullable=False)
+    threat_class: Mapped[int] = mapped_column(nullable=False)
+    dangereous_class: Mapped[int] = mapped_column(nullable=False)
+
+    texts: Mapped[list['Text']] = relationship(back_populates='semantic')
 
     def __repr__(self) -> str:
         return f'Text(id={self.id!r}, \

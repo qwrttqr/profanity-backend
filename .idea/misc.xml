@@ -3,5 +3,5 @@
   <component name="Black">
     <option name="sdkName" value="Python 3.13 (lms-service-profanity)" />
   </component>
-  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.10 (lms-service-profanity)" project-jdk-type="Python SDK" />
+  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.10 (profanity-neuro)" project-jdk-type="Python SDK" />
 </project>

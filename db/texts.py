@@ -1,9 +1,27 @@
-from .init_db import Session
-from db_models.text import Text
+from db.init_db import db_engine
+from sqlalchemy.orm import sessionmaker
+from db_models import Text
 
-def add_to_texts(profanity_id, semantic_id, answers_id, text_before, text_after):
 
-    with Session as session:
-        new_row = Text(
+def save_to_texts(**kwargs):
+        text_before = kwargs['text_before']
+        text_after = kwargs['text_after']
+        created_at = kwargs['created_at']
+        semantic_id = kwargs['semantic_id']
+        answers_id = kwargs['answers_id']
+        profanity_id = kwargs['profanity_id']
 
-        )
+
+
+        new_text = Text(text_before_processing=text_before,
+                        text_after_processing=text_after,
+                        created_at=created_at,
+                        semantic_id=semantic_id,
+                        answers_id=answers_id,
+                        profanity_id=profanity_id
+                        )
+
+        session = sessionmaker(db_engine)
+        with session() as ss:
+            ss.add(new_text)
+            ss.commit()

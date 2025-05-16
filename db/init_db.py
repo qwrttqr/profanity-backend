@@ -1,22 +1,28 @@
 import os
 import dotenv
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.engine import Engine
+from sqlalchemy.exc import DatabaseError
 
+
+db_engine: Engine | None = None
 
 def connect_db():
+    '''
+    create db engine connection
+    :return: session
+    '''
     dotenv.load_dotenv()
     database_username = os.environ.get('DB_USERNAME')
     database_password = os.environ.get('DB_PASSWORD')
+    global db_engine
     try:
-        engine = create_engine(
-            f'mysql+pymysql://{database_username}:{database_password}@localhost:3306/profantiy-neuro-db'
-        )
-        return engine
+        if db_engine is None:
+            db_engine= create_engine(
+                f'mysql+pymysql://{database_username}:'
+                f'{database_password}@localhost:3306/profantiy-neuro-db',
+                echo=True
+            )
     except:
-        print('Error connection to db')
+            raise DatabaseError('Error connection to db')
 
-
-database_engine = connect_db()
-
-Session = sessionmaker(bind=database_engine)

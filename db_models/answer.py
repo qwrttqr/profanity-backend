@@ -1,18 +1,20 @@
 from sqlalchemy.orm import Mapped, relationship
 from sqlalchemy.testing.schema import mapped_column
 
-from .base_class import DeclarativeBase
+from .base_class import Base
 
 
-class answer(DeclarativeBase):
+class Answer(Base):
     __tablename__ = 'answers'
-    id: Mapped[int] = mapped_column(primary_key=True, auto_increment=True)
-    text_id: Mapped[int] = relationship(back_populates='answers_id')
-    toxic_class: Mapped[int]
-    insult_class: Mapped[int]
-    threat_class: Mapped[int]
-    dangereous_class: Mapped[int]
-    profanity_class: Mapped[int]
+    id: Mapped[int] = mapped_column(primary_key=True,
+                                    autoincrement=True)
+    toxic_class: Mapped[int] = mapped_column(nullable=True)
+    insult_class: Mapped[int] = mapped_column(nullable=True)
+    threat_class: Mapped[int] = mapped_column(nullable=True)
+    dangereous_class: Mapped[int] = mapped_column(nullable=True)
+    profanity_class: Mapped[int] = mapped_column(nullable=True)
+
+    texts: Mapped[list['Text']] = relationship(back_populates='answers')
 
     def __repr__(self) -> str:
         return f'Text(id={self.id!r}, \

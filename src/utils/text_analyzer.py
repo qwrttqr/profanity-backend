@@ -1,8 +1,6 @@
-from typing import Dict
-
-from db_models.profanity_classes import profanity_label
 from .load import files
 from .text_prepar import text_preparator
+from .db_collector import collect_information
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
 
@@ -63,16 +61,26 @@ class TextAnalyzer:
 
     def analyze(self, text: str, threshold: float = 0.5) -> dict[
         str, dict | int]:
-        text_labels = self.__analyze_toxicity(text, threshold)
-        profanity_label = self.predict_profanity(text)
+        text_before_processing = text
+        text_after = ' '.join(
+            self.__text_preparator.prepare_text(text,
+                                                basing=False))
+        text_after_processing = text_after
+        text_labels = self.__analyze_toxicity(text_after, threshold)
+        profanity_label = self.predict_profanity(text_after)
 
         labels = {
-            'text_label': text_labels,
+            'text_labels': text_labels,
             'profanity_label': profanity_label
         }
+        print(labels)
+        # collect_information(text_before_processing,
+        #                     text_after_processing,
+        #                     analyzer_classes=text_labels,
+        #                     profanity_class=profanity_label)
         return labels
 
-    def __analyze_toxicity(self, text: str, threshold: float) -> dict:
+    def __analyze_toxicity(self, text: str, threshold: float) -> list:
         '''
         Calculate toxicity of a text.
         Returns dictinary of text aspects:
@@ -82,17 +90,10 @@ class TextAnalyzer:
         ATTENTION
             The model for predictions got from here https://huggingface.co/cointegrated/rubert-tiny-toxicity
         '''
-        text_before_processing = text
-
-        text_after = ' '.join(
-            self.__text_preparator.prepare_text(text_before_processing,
-                                                basing=False))
-
-        text_after_processing = text_after
 
         with torch.no_grad():
             inputs = self.__tokenizer(
-                text_after_processing, return_tensors='pt',
+                text, return_tensors='pt',
                 truncation=True, padding=True).to(
                 self.__model_toxicity.device
             )
@@ -102,10 +103,10 @@ class TextAnalyzer:
                     **inputs
                 ).logits).cpu().numpy()
 
-        if isinstance(text_after_processing, str):
+        if isinstance(text, str):
             proba = proba[0]
 
-        probas = [1 - proba[0]] + list(proba)[1:]
+        probas = [(1 - proba[0]) * proba[-1]] + list(proba)[1:]
         probas = [int(i >= threshold) for i in probas]
 
         text_labels = {

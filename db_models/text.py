@@ -1,21 +1,34 @@
-from sqlalchemy import String, DateTime
-from sqlalchemy.orm import Mapped
-from sqlalchemy.orm import mapped_column
-from .base_class import DeclarativeBase
+from sqlalchemy import String, DateTime, ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from .base_class import Base
 from datetime import datetime
-from sqlalchemy.orm import relationship
 
 
-class Text(DeclarativeBase):
+class Text(Base):
     __tablename__ = 'texts'
-    id: Mapped[int] = mapped_column(primary_key=True, auto_increment=True)
-    profanity_id: Mapped[int] = relationship(backbone_populates='id')
-    semantic_id: Mapped[int] = relationship(backbone_populates='id')
-    answers_id: Mapped[int] = relationship(backbone_populates='id')
-    text_before_processing: Mapped[str] = mapped_column(String(4000))
-    text_after_processing: Mapped[str] = mapped_column(String(4000))
+    id: Mapped[int] = mapped_column(primary_key=True,
+                                    autoincrement=True)
+    text_before_processing: Mapped[str] = mapped_column(String(4000),
+                                                        nullable=False)
+    text_after_processing: Mapped[str] = mapped_column(String(4000),
+                                                       nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime,
+                                                 default=datetime.now,
+                                                 nullable=False)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    semantic_id: Mapped[int] = mapped_column(ForeignKey(
+        'semantic_classes.id'), nullable=False)
+    answers_id: Mapped[int] = mapped_column(ForeignKey('answers.id'),
+                                            nullable=False)
+    profanity_id: Mapped[int] = mapped_column(ForeignKey(
+        'profanity_classes.id'), nullable=False)
+
+    profanity: Mapped['ProfanityClasses'] = relationship(
+        back_populates='texts')
+    answers: Mapped['Answer'] = relationship(
+        back_populates='texts')
+    semantic: Mapped['SemanticClasses'] = relationship(
+        back_populates='texts')
 
     def __repr__(self) -> str:
         return f'Text(id={self.id!r}, \

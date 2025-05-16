@@ -53,6 +53,7 @@ def load_file(
         encoding = None if binary else 'utf-8'
 
         with open(file_path, mode, encoding=encoding) as f:
+
             return loader(f)
 
     except FileNotFoundError:

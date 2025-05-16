@@ -1,12 +1,13 @@
 from fastapi import APIRouter
 from fastapi import Query
-from src.utils.text_analyzer import text_analyzer
+from src.utils import text_analyzer
 
 router = APIRouter(prefix='/analyze', tags=['profanity'])
 
 
 @router.get('/')
-def analyze_text_get(text: str = Query(..., description='Text to analyze'), threshold: float = 0.12) -> dict[str, str]:
+def analyze_text_get(text: str = Query(..., description='Text to analyze'),
+                     threshold: float = 0.5) -> dict[str, str]:
     '''
     Analyze text toxicity via GET request.
     Parameters:
@@ -16,10 +17,10 @@ def analyze_text_get(text: str = Query(..., description='Text to analyze'), thre
         text: text which was analyzed, label: toxicity label.
         profanity: do text has or not profanity words.
     '''
-    
-    labels = text_analyzer.analyze(text)
-    class_ = labels['text_label']
-    has_profanity = labels['profanity_label']
+    print(text)
+    # labels = text_analyzer.analyze(text, threshold)
+    # class_ = labels['text_labels']['toxic']
+    # has_profanity = labels['profanity_label']
 
     return {
         'text': text,
