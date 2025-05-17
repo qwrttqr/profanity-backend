@@ -1,13 +1,19 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from src.api.main import api_router
-from db.init_db import connect_db
+from src.utils import TextAnalyzer
+from db.utils.init_db import connect_db
 
 app = FastAPI()
-# try:
-#     connect_db()
-# except Exception as e:
-#     print('Error connecting to db', e)
+@app.on_event("startup")
+async def startup():
+    app.state.analyzer = TextAnalyzer()
+
+
+try:
+    connect_db()
+except Exception as e:
+    print('Error connecting to db', e)
 
 
 app.add_middleware(

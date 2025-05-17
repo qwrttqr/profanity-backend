@@ -1,7 +1,7 @@
 from .load import files
-from .text_prepar import text_preparator
-from .db_collector import collect_information
+from db.utils.db_collector import collect_information
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
+from .text_prepar import TextPreparation
 import torch
 
 
@@ -24,7 +24,7 @@ class TextAnalyzer:
 
     def __init__(self):
 
-        self.__text_preparator = text_preparator
+        self.__text_preparator = TextPreparation()
         self.__vectorizer = files['vectorizer_model']
         self.__model_profanity = files['ML_model']
         model_checkpoint = 'cointegrated/rubert-tiny-toxicity'
@@ -52,7 +52,7 @@ class TextAnalyzer:
         preds = [0 if prob <
                       threshold else 1 for prob in predictions]
 
-        return any(pred for pred in preds)
+        return int(any(pred for pred in preds))
 
     def predict_proba_profanity(self, input_text: str) -> dict:
         predictions = self.__get_predict(input_text)
@@ -73,11 +73,13 @@ class TextAnalyzer:
             'text_labels': text_labels,
             'profanity_label': profanity_label
         }
-        print(labels)
-        # collect_information(text_before_processing,
-        #                     text_after_processing,
-        #                     analyzer_classes=text_labels,
-        #                     profanity_class=profanity_label)
+        analyzer_classes = labels['text_labels']
+        profanity_class = labels['profanity_label']
+
+        collect_information(text_before_processing,
+                                text_after_processing,
+                                analyzer_classes=analyzer_classes,
+                                profanity_class=profanity_class)
         return labels
 
     def __analyze_toxicity(self, text: str, threshold: float) -> list:
@@ -127,5 +129,3 @@ class TextAnalyzer:
 
         return probabilities
 
-
-text_analyzer = TextAnalyzer()

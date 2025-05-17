@@ -1,7 +1,6 @@
-from sqlalchemy.orm import Mapped, relationship
-from sqlalchemy.testing.schema import mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from .base_class import Base
+from db.db_models.base_class import Base
 
 
 class ProfanityClasses(Base):

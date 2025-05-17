@@ -1,6 +1,6 @@
 from sqlalchemy import String, DateTime, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from .base_class import Base
+from db.db_models.base_class import Base
 from datetime import datetime
 
 
@@ -12,7 +12,7 @@ class Text(Base):
                                                         nullable=False)
     text_after_processing: Mapped[str] = mapped_column(String(4000),
                                                        nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime,
+    creation_date: Mapped[datetime] = mapped_column(DateTime,
                                                  default=datetime.now,
                                                  nullable=False)
 
@@ -37,4 +37,4 @@ class Text(Base):
                     answers_id={self.answers_id!r}, \
                     text_before_processing={self.text_before_processing!r}, \
                     text_after_processing={self.text_after_processing!r}, \
-                    created_at={self.created_at!r})'
+                    created_at={self.creation_date!r})'

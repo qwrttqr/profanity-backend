@@ -261,6 +261,3 @@ class TextPreparation:
             str: Word only with letters.
         '''
         return re.sub(r'[^а-яё]', '', word)
-
-
-text_preparator = TextPreparation()
