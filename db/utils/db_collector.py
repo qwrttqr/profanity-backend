@@ -4,27 +4,31 @@ from datetime import datetime
 from db.utils.session import get_session
 from db.utils.table_collisions import table_collisions
 
+
 def collect_information(text_before: str,
                         text_after: str,
                         analyzer_classes: dict,
                         profanity_class: int):
     '''
-    Collects information from analyzer and manages it to store to db.
-    :param text_before: str - text before processing
-    :param text_after: str - text after processing
-    :param analyzer_classes: list - list of analyzer classes
-    :param profanity_class: int - profanity class
+
+    Args:
+        text_before: str - text before processing
+        text_after: str - text after processing
+        analyzer_classes: dict - list of analyzer classes
+        profanity_class: int - profanity class
     '''
 
     LocalSession = get_session()
-    try:
-        with LocalSession() as ss:
 
-            profanity_class_obj = ProfanityClasses(profanity_class=profanity_class)
-            semantic_class_obj = SemanticClasses(toxic_class=analyzer_classes.get('toxic'),
-                                                 insult_class=analyzer_classes.get('insult'),
-                                                 threat_class=analyzer_classes.get('threat'),
-                                                 dangerous_class=analyzer_classes.get('dangerous'))
+    with LocalSession() as ss:
+        try:
+            profanity_class_obj = ProfanityClasses(
+                profanity_class=profanity_class)
+            semantic_class_obj = SemanticClasses(
+                toxic_class=analyzer_classes.get('toxic'),
+                insult_class=analyzer_classes.get('insult'),
+                threat_class=analyzer_classes.get('threat'),
+                dangerous_class=analyzer_classes.get('dangerous'))
 
             answer_obj = Answer()
             profanity_id = table_collisions(table=ProfanityClasses,
@@ -41,9 +45,13 @@ def collect_information(text_before: str,
                 ss.flush()
                 semantic_id = semantic_class_obj.id
 
-            ss.add(answer_obj)
-            ss.flush()
-            answer_id = answer_obj.id
+            answer_id = table_collisions(table=Answer,
+                                         data=answer_obj)
+
+            if answer_id is None:
+                ss.add(answer_obj)
+                ss.flush()
+                answer_id = answer_obj.id
 
             text_obj = Text(text_before_processing=text_before,
                             text_after_processing=text_after,
@@ -53,5 +61,6 @@ def collect_information(text_before: str,
                             creation_date=datetime.now())
             ss.add(text_obj)
             ss.commit()
-    except Exception as e:
-        print('error commiting to db', e)
+        except Exception as e:
+            ss.rollback()
+            print('Error commiting to db', e)

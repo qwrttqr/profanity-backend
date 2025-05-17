@@ -18,8 +18,8 @@ class Text(Base):
 
     semantic_id: Mapped[int] = mapped_column(ForeignKey(
         'semantic_classes.id'), nullable=False)
-    answers_id: Mapped[int] = mapped_column(ForeignKey('answers.id'),
-                                            nullable=False)
+    answers_id: Mapped[int] = mapped_column(ForeignKey(
+        'answers.id'), nullable=False)
     profanity_id: Mapped[int] = mapped_column(ForeignKey(
         'profanity_classes.id'), nullable=False)
 
