@@ -9,8 +9,8 @@ db_engine: Engine | None = None
 
 def connect_db():
     '''
-    create db engine connection
-    :return: session
+    creates db engine.
+    :return: Engine
     '''
     dotenv.load_dotenv()
     database_username = os.environ.get('DB_USERNAME')
@@ -28,6 +28,11 @@ def connect_db():
             raise DatabaseError('Error connection to db')
 
 def get_db_engine() -> Engine:
+    '''
+    gets db engine.
+    :return: Engine
+    :return:
+    '''
     if db_engine is None:
         connect_db()
     return db_engine

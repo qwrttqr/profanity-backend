@@ -1,12 +1,20 @@
 from sqlalchemy import select
-from db.db_models import ProfanityClasses, SemanticClasses
+from db.db_models import ProfanityClasses, SemanticClasses, Answer
 from sqlalchemy.orm import sessionmaker
 from db.utils.session import get_session
 
 
-def table_collisions(table: ProfanityClasses | SemanticClasses,
-                     data: ProfanityClasses | SemanticClasses) \
-        -> int | None:
+def table_collisions(table: ProfanityClasses | SemanticClasses | Answer,
+                     data: ProfanityClasses | SemanticClasses | Answer) -> (
+        int | None):
+    '''
+    Finds rows in table that will correspond current set of classes.
+    Returns None is there is no row with that set or int with id which row
+    with that set contain.
+    :param table: SQLAlchemy table type
+    :param data: Object constructed from SQLAlchemy table type
+    :return: int | None
+    '''
     LocalSession = get_session()
 
     with LocalSession() as ss:
@@ -16,8 +24,10 @@ def table_collisions(table: ProfanityClasses | SemanticClasses,
             result = ss.execute(stmt).scalars().first()
             ss.close()
             if result:
+
                 return result.id
             else:
+
                 return None
 
         elif table.__tablename__ == 'semantic_classes':
@@ -33,6 +43,23 @@ def table_collisions(table: ProfanityClasses | SemanticClasses,
 
                 return result.id
             else:
+                return None
+        elif table.__tablename__ == 'answers':
+            stmt = select(Answer).where(
+                (Answer.toxic_class == data.toxic_class) &
+                (Answer.insult_class == data.insult_class) &
+                (Answer.threat_class == data.threat_class) &
+                (Answer.dangerous_class == data.dangerous_class) &
+                (Answer.profanity_class == data.profanity_class)
+            )
+            result = ss.execute(stmt).scalars().first()
+            ss.close()
+
+            if result:
+
+                return result.id
+            else:
+
                 return None
         else:
             raise Exception('Incorrect table name')

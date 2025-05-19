@@ -45,7 +45,7 @@ class TextAnalyzer:
             Based on that number text will be labeled as contain profanity.
 
         Returns:
-
+            class: int 1 if text contains profane words and 0 if not
         '''
 
         predictions = self.__get_predict(input_text)
@@ -54,13 +54,24 @@ class TextAnalyzer:
 
         return int(any(pred for pred in preds))
 
-    def predict_proba_profanity(self, input_text: str) -> dict:
+    def predict_proba_profanity(self, input_text: str) -> list[int]:
         predictions = self.__get_predict(input_text)
 
         return predictions
 
     def analyze(self, text: str, threshold: float = 0.5) -> dict[
         str, dict | int]:
+        '''
+        Analyze given text for toxicity, offensiveness, threat content and
+        reputational risks of the sender. Also provide information about
+        profane words in text.
+        Args:
+            text: str - text to analyze
+            threshold: float - threshold to mark labels.
+
+        Returns:
+            information: dict[str, dict | int]
+        '''
         text_before_processing = text
         text_after = ' '.join(
             self.__text_preparator.prepare_text(text,
@@ -77,15 +88,16 @@ class TextAnalyzer:
         profanity_class = labels['profanity_label']
 
         collect_information(text_before_processing,
-                                text_after_processing,
-                                analyzer_classes=analyzer_classes,
-                                profanity_class=profanity_class)
+                            text_after_processing,
+                            analyzer_classes=analyzer_classes,
+                            profanity_class=profanity_class)
         return labels
 
-    def __analyze_toxicity(self, text: str, threshold: float) -> list:
+    def __analyze_toxicity(self, text: str, threshold: float) \
+            -> dict[str, int]:
         '''
         Calculate toxicity of a text.
-        Returns dictinary of text aspects:
+        Returns dictionary of text aspects:
             [toxic, insult, threat, dangerous]
         Threshould should be from 0 to 1. This param controls border to mark.
 
@@ -128,4 +140,3 @@ class TextAnalyzer:
         probabilities = self.__model_profanity.predict_proba(vec_text)[:, 1]
 
         return probabilities
-
