@@ -19,9 +19,9 @@ def table_collisions(table: ProfanityClasses | SemanticClasses | Answer,
 
     with LocalSession() as ss:
         if table.__tablename__ == 'profanity_classes':
-            stmt = select(ProfanityClasses).where(
+            statement = select(ProfanityClasses).where(
                 ProfanityClasses.profanity_class == data.profanity_class)
-            result = ss.execute(stmt).scalars().first()
+            result = ss.execute(statement).scalars().first()
             ss.close()
             if result:
 
@@ -31,13 +31,13 @@ def table_collisions(table: ProfanityClasses | SemanticClasses | Answer,
                 return None
 
         elif table.__tablename__ == 'semantic_classes':
-            stmt = select(SemanticClasses).where(
+            statement = select(SemanticClasses).where(
                 (SemanticClasses.toxic_class == data.toxic_class) &
                 (SemanticClasses.insult_class == data.insult_class) &
                 (SemanticClasses.threat_class == data.threat_class) &
                 (SemanticClasses.dangerous_class == data.dangerous_class)
             )
-            result = ss.execute(stmt).scalars().first()
+            result = ss.execute(statement).scalars().first()
             ss.close()
             if result:
 
@@ -45,14 +45,14 @@ def table_collisions(table: ProfanityClasses | SemanticClasses | Answer,
             else:
                 return None
         elif table.__tablename__ == 'answers':
-            stmt = select(Answer).where(
+            statement = select(Answer).where(
                 (Answer.toxic_class == data.toxic_class) &
                 (Answer.insult_class == data.insult_class) &
                 (Answer.threat_class == data.threat_class) &
                 (Answer.dangerous_class == data.dangerous_class) &
                 (Answer.profanity_class == data.profanity_class)
             )
-            result = ss.execute(stmt).scalars().first()
+            result = ss.execute(statement).scalars().first()
             ss.close()
 
             if result:
