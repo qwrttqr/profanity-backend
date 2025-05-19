@@ -44,8 +44,6 @@ def collect_information(text_before: str,
                 ss.flush()
                 semantic_id = semantic_class_obj.id
 
-            ss.add(answer_obj)
-            ss.flush()
             answer_id = table_collisions(table=Answer,
                                          data=answer_obj)
 
