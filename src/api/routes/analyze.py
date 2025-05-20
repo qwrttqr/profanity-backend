@@ -39,16 +39,28 @@ def get_answers_table(skip: int = Query(default=0,
                                         description='How much rows in table '
                                                     'we should skip'),
                       limit: int = Query(default=20,
-                                          description='How much rows we want to get')):
+                                         description='How much rows we want to get')):
     '''
     Returns path of answers starts from skip+1 row and ends in skip+offset row.
     Parameters:
-        request : Request - request.
         skip : int - how much rows to skip.
         limit : int - how much rows we want to get.
     Returns:
-        text_array: list - array with text info
+        'table_headers': list - headers of the table
+        'rows': list - list of array rows
     '''
+    table_headers = ['Текст до подготовки',
+                     'Текст после подготовки',
+                     'Дата обработки',
+                     'Содержит маты',
+                     'Токсичное',
+                     'Содержит оскорбления',
+                     'Содержит угрозы',
+                     'Содержит репутационный риск для отправителя']
+
     result = get_answers_table_(skip, limit)
-    print(result)
-    return {'tables_array': result}
+
+    return {
+        'table_headers': table_headers,
+        'rows': result
+    }
