@@ -59,7 +59,7 @@ class TextAnalyzer:
 
         return predictions
 
-    def analyze(self, text: str, threshold: float = 0.5) -> dict[
+    def analyze(self, text: str, threshold) -> dict[
         str, dict | int]:
         '''
         Analyze given text for toxicity, offensiveness, threat content and
