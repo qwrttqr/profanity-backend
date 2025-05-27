@@ -1,5 +1,3 @@
-import json
-import datetime
 from db.db_models import Text, ProfanityClasses, SemanticClasses
 from db.utils import get_session
 from sqlalchemy import select
