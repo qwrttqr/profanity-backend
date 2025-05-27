@@ -47,12 +47,14 @@ class TextAnalyzer:
         Returns:
             class: int 1 if text contains profane words and 0 if not
         '''
+        try:
+            predictions = self.__get_predict(input_text)
+            preds = [0 if prob <
+                          threshold else 1 for prob in predictions]
 
-        predictions = self.__get_predict(input_text)
-        preds = [0 if prob <
-                      threshold else 1 for prob in predictions]
-
-        return int(any(pred for pred in preds))
+            return int(any(pred for pred in preds))
+        except:
+            raise Exception('Error during profaity analysis')
 
     def predict_proba_profanity(self, input_text: str) -> list[int]:
         predictions = self.__get_predict(input_text)

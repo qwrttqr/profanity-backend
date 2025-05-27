@@ -10,11 +10,12 @@ def collect_information(text_before: str,
                         analyzer_classes: dict,
                         profanity_class: int):
     '''
-    Collects information from analyzer and manages it to store to db.
-    :param text_before: str - text before processing
-    :param text_after: str - text after processing
-    :param analyzer_classes: dict - list of analyzer classes
-    :param profanity_class: int - profanity class
+
+    Args:
+        text_before: str - text before processing
+        text_after: str - text after processing
+        analyzer_classes: dict - list of analyzer classes
+        profanity_class: int - profanity class
     '''
 
     LocalSession = get_session()
@@ -62,4 +63,4 @@ def collect_information(text_before: str,
             ss.commit()
         except Exception as e:
             ss.rollback()
-            print('error commiting to db', e)
+            print('Error commiting to db', e)

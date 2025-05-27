@@ -1,41 +1,36 @@
-from db.db_models import Text, ProfanityClasses, SemanticClasses
+import datetime
 from db.utils import get_session
-from sqlalchemy import select
+from sqlalchemy import Select
 
 
-def get_answers_table_(skip, limit):
-    statement = (
-        select(
-            Text.text_before_processing,
-            Text.text_after_processing,
-            Text.creation_date,
-            ProfanityClasses.profanity_class,
-            SemanticClasses.toxic_class,
-            SemanticClasses.insult_class,
-            SemanticClasses.threat_class,
-            SemanticClasses.dangerous_class
-        )
-        .join(ProfanityClasses, Text.profanity_id == ProfanityClasses.id)
-        .join(SemanticClasses, Text.semantic_id == SemanticClasses.id)
-    ).offset(skip).limit(limit)
+def select_from_table(statement: Select, skip: int = -1, limit: int = -1):
+    '''
+    Executes select statement by given statement.
+    Args:
+        statement: Select - select statement.
+        skip: int - how many rows to skip for pagination.
+        limit: int - how nany rows to select after skippend ones
 
+    Returns:
+        rows: list[dict] - list of rows.
+
+    Raises:
+        Error during selecting from table.
+    '''
     LocalSession = get_session()
     rows = []
     with LocalSession() as ss:
-        result = ss.execute(statement).fetchall()
-
-        for item in result:
-
-            info = {
-                'text_before': str(item.text_before_processing),
-                'text_after': str(item.text_after_processing),
-                'creation_date': item.creation_date.isoformat(),
-                'profanity_class': int(item.profanity_class),
-                'toxic_class': int(item.toxic_class),
-                'insult_class': int(item.insult_class),
-                'threat_class': int(item.threat_class),
-                'dangerous_class': int(item.dangerous_class)
-            }
-            rows.append(info)
+        try:
+            res = ss.execute(statement.offset(skip).limit(limit)).fetchall()
+            for item in res:
+                row = {}
+                for key, value in item._asdict().items():
+                    if isinstance(value, datetime.date):
+                        row[key] = value.isoformat()
+                    else:
+                        row[key] = value
+                rows.append(row)
+        except Exception as e:
+            print('Error during selecting from table', e)
 
     return rows

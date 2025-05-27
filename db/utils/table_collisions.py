@@ -11,7 +11,7 @@ def table_collisions(table: ProfanityClasses | SemanticClasses | Answer,
     Finds rows in table that will correspond current set of classes.
     Returns None is there is no row with that set or int with id which row
     with that set contain.
-    Parameters:
+    Args:
         table: SQLAlchemy table type
         data: Object constructed from SQLAlchemy table type
     Returns:

@@ -4,8 +4,9 @@ from .init_db import get_db_engine
 
 def get_session() -> Session:
     '''
-    returns session fabric class
-    :return: Session
+
+    Returns:
+        Session: Session - fabric for creating new sessions
     '''
     engine = get_db_engine()
     Session = sessionmaker(bind=engine)
