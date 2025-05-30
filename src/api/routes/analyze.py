@@ -1,6 +1,7 @@
 from fastapi import (APIRouter, Query, Request, HTTPException)
 from db.utils import select_from_table
 from db.utils import select_from_answers_statement, select_from_model_answers_statement
+from db.db_models.pydantic import AnswerPost
 
 router = APIRouter(prefix='/analyze', tags=['profanity'])
 
@@ -98,3 +99,7 @@ def get_answers_table(skip: int = Query(default=0,
         'table_headers': table_headers,
         'rows': result
     }
+
+@router.post('/upload_answers/')
+def load_new_answers(answers: AnswerPost):
+    print(answers)
