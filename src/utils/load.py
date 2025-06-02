@@ -11,14 +11,14 @@ def get_project_root() -> Path:
 
 
 n_grams_path = get_project_root() / 'files' / 'n_grams.json'
-vectorizer_path = get_project_root() / 'models' / 'vectorizer.joblib'
-model_path = get_project_root() / 'models' / 'model.joblib'
 deobfuscation_table_path = get_project_root() / 'files' / \
     'deobfuscation_table.json'
+vectorizer_path = (get_project_root() / 'models' /
+                          'vectorizer.joblib')
+model_path = (get_project_root() / 'models' /
+                     'model.joblib')
 
 files = {
-    'vectorizer_model': None,
-    'ML_model': None,
     'n-grams': None,
     'deobfuscation_table': None
 }
@@ -67,9 +67,6 @@ def load_file(
     except Exception as e:
         raise RuntimeError(f'Error loading {file_type}: {str(e)}')
 
-
-files['vectorizer_model'] = load_file(vectorizer_path, joblib.load, 'rb', True)
-files['ML_model'] = load_file(model_path, joblib.load, 'rb', True)
 files['n-grams'] = load_file(n_grams_path, json.load, 'r', False)
 files['deobfuscation_table'] = load_file(
     deobfuscation_table_path, 

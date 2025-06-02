@@ -30,3 +30,10 @@ select_from_answers_statement = (
     .join(ProfanityClasses, Text.profanity_id == ProfanityClasses.id)
     .join(SemanticClasses, Text.semantic_id == SemanticClasses.id)
 )
+
+select_from_model_answers_for_profanity = (
+    select(
+        Text.text_after_processing,
+        ProfanityClasses.profanity_class
+    ).join(Text.profanity)
+)

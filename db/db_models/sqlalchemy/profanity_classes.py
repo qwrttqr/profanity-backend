@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from db.db_models.base_class import Base
+from db.db_models.sqlalchemy.base_class import Base
 
 
 class ProfanityClasses(Base):

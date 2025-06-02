@@ -2,6 +2,8 @@ from fastapi import (APIRouter, Query, Request, HTTPException)
 from db.utils import select_from_table
 from db.utils import select_from_answers_statement, select_from_model_answers_statement
 from db.db_models.pydantic import AnswerPost
+from src.utils.profanity_module import ProfanityModule
+from src.utils.post_learn.splitter import split
 
 router = APIRouter(prefix='/analyze', tags=['profanity'])
 
@@ -22,7 +24,6 @@ def analyze_text_get(request: Request,
     Raises:
         HTTP Exception - 400 status code if text for analyzing is incorrect.
     '''
-    print(text)
     try:
         labels = request.app.state.analyzer.analyze(text, threshold)
         class_ = labels['text_labels']['toxic']
@@ -101,5 +102,8 @@ def get_answers_table(skip: int = Query(default=0,
     }
 
 @router.post('/upload_answers/')
-def load_new_answers(answers: AnswerPost):
-    print(answers)
+def load_new_answers(request: Request,
+                     answers: AnswerPost):
+    profanity_module = request.app.state.profanity_module
+    profane_rows, semantic_rows = split(answers.rows)
+    profanity_module.post_learn(profanity_rows=profane_rows)

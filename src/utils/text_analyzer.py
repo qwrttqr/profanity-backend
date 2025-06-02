@@ -2,6 +2,8 @@ from .load import files
 from db.utils.db_collector import collect_information
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from .text_prepar import TextPreparation
+from .profanity_module import ProfanityModule
+from .load import model_path, vectorizer_path
 import torch
 
 
@@ -22,11 +24,12 @@ class TextAnalyzer:
         Calculate (if return_proba = False) class for given text(0 - non-toxic, 1-toxic). Otherwise (if return_proba = True) returns based on aggregate param(if aggregate = True returns probability of a text to be toxic, if aggregate = False vector of a probability aspects).
     '''
 
-    def __init__(self):
-
+    def __init__(self, profanity_module: ProfanityModule):
         self.__text_preparator = TextPreparation()
-        self.__vectorizer = files['vectorizer_model']
-        self.__model_profanity = files['ML_model']
+        self.__profanity_module = profanity_module
+        self.__profanity_module.attach(self)
+        self.__vectorizer = self.__profanity_module.get_vectorizer()
+        self.__model_profanity = self.__profanity_module.get_model()
         model_checkpoint = 'cointegrated/rubert-tiny-toxicity'
         self.__tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
         self.__model_toxicity = AutoModelForSequenceClassification.from_pretrained(
@@ -93,7 +96,12 @@ class TextAnalyzer:
                             text_after_processing,
                             analyzer_classes=analyzer_classes,
                             profanity_class=profanity_class)
+
         return labels
+
+    def update(self):
+        self.__model_profanity = self.__profanity_module.get_model()
+        self.__vectorizer = self.__profanity_module.get_vectorizer()
 
     def __analyze_toxicity(self, text: str, threshold: float) \
             -> dict[str, int]:

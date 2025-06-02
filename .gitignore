@@ -176,3 +176,4 @@ cython_debug/
 .vscode
 # Special files
 n_grams.json
+ipynb_checkpoints/
