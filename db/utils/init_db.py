@@ -23,6 +23,7 @@ def connect_db():
                 f'{database_password}@localhost:3306/profanity-neuro-db',
                 echo=True
             )
+
         return db_engine
     except:
             raise DatabaseError('Error connection to db')
@@ -34,4 +35,5 @@ def get_db_engine() -> Engine:
     '''
     if db_engine is None:
         connect_db()
+
     return db_engine

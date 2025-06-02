@@ -45,6 +45,7 @@ def table_collisions(table: ProfanityClasses | SemanticClasses | Answer,
 
                 return result.id
             else:
+
                 return None
         elif table.__tablename__ == 'answers':
             statement = select(Answer).where(

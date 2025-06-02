@@ -7,14 +7,14 @@ from db.utils.table_collisions import table_collisions
 
 def collect_information(text_before: str,
                         text_after: str,
-                        analyzer_classes: dict,
+                        semantic_classes: dict,
                         profanity_class: int):
     '''
 
     Args:
         text_before: str - text before processing
         text_after: str - text after processing
-        analyzer_classes: dict - list of analyzer classes
+        semantic_classes: dict - list of analyzer classes
         profanity_class: int - profanity class
     '''
 
@@ -25,12 +25,13 @@ def collect_information(text_before: str,
             profanity_class_obj = ProfanityClasses(
                 profanity_class=profanity_class)
             semantic_class_obj = SemanticClasses(
-                toxic_class=analyzer_classes.get('toxic'),
-                insult_class=analyzer_classes.get('insult'),
-                threat_class=analyzer_classes.get('threat'),
-                dangerous_class=analyzer_classes.get('dangerous'))
+                toxic_class=semantic_classes.get('toxic'),
+                insult_class=semantic_classes.get('insult'),
+                threat_class=semantic_classes.get('threat'),
+                dangerous_class=semantic_classes.get('dangerous'))
 
             answer_obj = Answer()
+
             profanity_id = table_collisions(table=ProfanityClasses,
                                             data=profanity_class_obj)
             if profanity_id is None:

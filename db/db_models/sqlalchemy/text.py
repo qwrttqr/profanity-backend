@@ -15,6 +15,7 @@ class Text(Base):
     creation_date: Mapped[datetime] = mapped_column(DateTime,
                                                  default=datetime.now,
                                                  nullable=False)
+    updation_date: Mapped[datetime] = mapped_column(DateTime, default=None)
 
     semantic_id: Mapped[int] = mapped_column(ForeignKey(
         'semantic_classes.id'), nullable=False)

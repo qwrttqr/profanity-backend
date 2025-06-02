@@ -1,19 +1,21 @@
 import joblib
 import pandas as pd
 import numpy as np
-from .load import load_file
-from sklearn.model_selection import train_test_split
-from db.utils.select_from_db import select_from_table
+from src.utils.load import load_file
+from sklearn.model_selection import train_test_split, GridSearchCV
+from db.utils.select_from_table import select_from_table
 from db.utils.statemenents import select_from_model_answers_for_profanity
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.svm import LinearSVC
-from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import classification_report
 from sklearn.calibration import CalibratedClassifierCV
-
+from src.utils.text_prepar import TextPreparation
+from db.utils.update_table import get_id, update_table
+from db.utils.statemenents import update_profanity_id
 
 class ProfanityModule:
     ProfanityModuleInstance = None
+
     def __new__(cls, *args, **kwargs):
         if cls.ProfanityModuleInstance is None:
             cls.ProfanityModuleInstance = super().__new__(cls)
@@ -21,7 +23,6 @@ class ProfanityModule:
 
     def __init__(self, model_path, vectorizer_path):
         if not hasattr(self, 'initialized'):
-
             self.__model = load_file(model_path,
                                      joblib.load, 'rb',
                                      True)
@@ -32,6 +33,7 @@ class ProfanityModule:
             self.__model_path = model_path
             self.__vectorizer_path = vectorizer_path
             self.__observers = []
+            self.__text_prepar = TextPreparation()
 
     def get_model(self):
 
@@ -45,12 +47,18 @@ class ProfanityModule:
         if observer not in self.__observers:
             self.__observers.append(observer)
 
-    def notify(self):
+    def __notify(self):
         for item in self.__observers:
             try:
                 item.update()
             except Exception as e:
                 print('Error during observer notifying', e)
+
+    def __prepare_word(self, elem: str) -> list[str]:
+        return self.__text_prepar.prepare_text(elem,
+                                               word_basing_method='stemming',
+                                               deobfuscation=False)
+
     def __prepare_data(self, profanity_rows: list[dict[str, int | str | dict]]):
         '''
         Creates dataframe based on currently known data and new data
@@ -58,7 +66,7 @@ class ProfanityModule:
             profanity_rows: list[dict[str, int | str]] - array of new data
 
         Returns:
-            dataframe: pandas.DataFrame - dataframe with 2 columns?
+            dataframe: pandas.DataFrame - dataframe with 2 columns
 
         '''
         rows = select_from_table(statement=select_from_model_answers_for_profanity)
@@ -68,17 +76,19 @@ class ProfanityModule:
         }
 
         for item in rows:
-            data['text'].append(item['text_after_processing'])
+            prepared_row = self.__prepare_word(item['text_after_processing'])
+            data['text'].append(' '.join(prepared_row))
             data['profanity_class'].append(item['profanity_class'])
 
         for item in profanity_rows:
             for elem in item['meta']['profane_words']:
-                data['text'].append(elem)
+                prepared_elem = self.__prepare_word(elem)
+                data['text'].append(' '.join(prepared_elem))
                 data['profanity_class'].append(item['profanity_class'])
 
         return pd.DataFrame(data)
 
-    def post_learn(self, profanity_rows):
+    def post_learn(self, profanity_rows, threshold: float = 0.5):
         """
         Train a profanity classification model with calibrated probabilities
 
@@ -87,17 +97,23 @@ class ProfanityModule:
         """
         dataframe = self.__prepare_data(profanity_rows)
 
+        print(profanity_rows)
+        rows = []
+        for item in profanity_rows:
+            rows.append({
+                'id' : item['id'],
+                'phrase': item['meta']['profane_words']
+        })
+
         X, y = dataframe.text, dataframe.profanity_class
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, test_size=0.2, random_state=42, stratify=y
         )
 
-        # Fit vectorizer only on training data to prevent data leakage
         vectorizer = CountVectorizer()
         X_train_vec = vectorizer.fit_transform(X_train)
         X_test_vec = vectorizer.transform(X_test)
 
-        # Grid search parameters
         param_grid = {
             'C': np.array([0.001, 0.01, 0.1, 1., 10., 100.]),
             'class_weight': [None, 'balanced']
@@ -123,14 +139,13 @@ class ProfanityModule:
 
         grid_clf_cv.fit(X_train_vec, y_train)
 
-        # Train final calibrated model with best parameters
         final_clf = CalibratedClassifierCV(
             estimator=LinearSVC(**grid_clf_cv.best_params_)
         )
         final_clf.fit(X_train_vec, y_train)
 
-        # Evaluate on test set
         y_pred = final_clf.predict(X_test_vec)
+        # Save metrics to show on front-end
         test_metrics = classification_report(y_test, y_pred, output_dict=True)
 
         self.__model = final_clf
@@ -139,4 +154,13 @@ class ProfanityModule:
         joblib.dump(self.__model, self.__model_path)
         joblib.dump(self.__vectorizer, self.__vectorizer_path)
 
-        self.notify()
+        for item in rows:
+            vectorized = self.__vectorizer.transform(item['phrase'])
+            prediction = self.__model.predict_proba(vectorized)[:, 1]
+            class_ = 1 if prediction >= threshold else 0
+            profanity_id = get_id(table_type='profanity_table', profanity_class=class_)
+            update_table(update_profanity_id,{'id': item['id']},
+                         values={'profanity_id': profanity_id})
+
+
+        self.__notify()

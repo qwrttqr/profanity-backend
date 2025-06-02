@@ -10,4 +10,5 @@ def get_session() -> Session:
     '''
     engine = get_db_engine()
     Session = sessionmaker(bind=engine)
+
     return Session

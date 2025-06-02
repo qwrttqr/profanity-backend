@@ -5,44 +5,54 @@ from nltk.stem.snowball import SnowballStemmer
 
 
 class TextPreparation:
-    '''
+    """
     Prepares text for the processing with the next pipeline step.
     Methods:
         prepare_text(text: str, word_basing_method: str = 'lemmatization', deobfuscation: bool = True, basing: bool = True): prepares text step by step.
         1 step - raw preparing(splitting by spaces, delete urls, replace ['Ё', 'ё'] -> e based on regexp, remove punctuation and special characters, lowecase all).
-        2 step - schrinking(delete all 3 and more letters in row).
+        2 step - shrinking(delete all 3 and more letters in row).
         3 step - deobfuscation(if deobfuscation = True, make replacements based on deobfuscation table(e.g. М4рия -> мария)). The replacements takes place in 2 stages:
             3.1 - non_single_char replacements.
-            3.2 - Unambiguous replacement(list lenght in table equal 1).
-            3.3 - Ambiguous replacement(list lenght in table > 1).
-            *stage 3.3 is happening with trying to find best n-gramm(n-grams with max lenght or n-grams with min occurence in case with equal n-gram lenght).
+            3.2 - Unambiguous replacement(list length in table equal 1).
+            3.3 - Ambiguous replacement(list length in table > 1).
+            *stage 3.3 is happening with trying to find best n-gramm(n-grams with max length or n-grams with min occurrence in case with equal n-gram length).
         4 step - clearing(delete all non-letters symbols left after deobfuscation).
         5 step - base word getting(based on word basing method).
     Warning - 3rd step is implemented by pymorphy2 and nltk snowballStemmer, see the docs for details
         Returns list of deobfuscated lemmatized strings.
-    '''
+    """
+
+    TextPreparationInstance = None
+
+    def __new__(cls, *args, **kwargs):
+        if cls.TextPreparationInstance is None:
+            cls.TextPreparationInstance = super().__new__(cls)
+
+        return cls.TextPreparationInstance
 
     def __init__(self):
-        self.__deobfuscation_table = files['deobfuscation_table']
-        self.__morpher = MorphAnalyzer()
-        self.__stemmer = SnowballStemmer(language='russian')
-        self.__n_grams = files['n-grams']
+        if not hasattr(self, 'initialized'):
+            self.__deobfuscation_table = files['deobfuscation_table']
+            self.__morpher = MorphAnalyzer()
+            self.__stemmer = SnowballStemmer(language='russian')
+            self.__n_grams = files['n-grams']
+            self.initialized = True
 
     def prepare_text(self,
                      text: str, word_basing_method: str = 'lemmatization',
-                     deobfuscation: bool = True, basing: bool = True) -> list:
-        '''
+                     deobfuscation: bool = True, basing: bool = True) -> list[str]:
+        """
         Prepares the text.
 
         Parameters:
             text(str): text should be prepared.
             word_basing_method(str): which method of word basing we should use. Should be 'lemmatization' or 'stemming'.
             deobfuscation(bool): optional, whether we do deobfuscation. True by default.
-            basing(bool): optional, controls whether or not we doing lemmatization + stemming after text clearing.
+            basing(bool): optional, controls whether we're doing lemmatization + stemming after text clearing.
             True by default.
         Returns:
-            list: Words after prepating
-        '''
+            list: str -  Words after preparing
+        """
 
         words = self.__raw_preparing(text)
         processed_words = []
@@ -51,7 +61,7 @@ class TextPreparation:
             processed = self.__delete_long_vowels(deobfuscated)
 
             if deobfuscation:  # If we do deobfuscation
-                deobfuscated = self.__deobfuscate(item)
+                processed = self.__deobfuscate(item)
 
             cleared = self.__get_letters_only(processed)
             cleared = list(cleared)
@@ -86,12 +96,12 @@ class TextPreparation:
         return has_left_vowel and has_right_vowel
 
     def __deobfuscate(self, word: str) -> str:
-        '''
+        """
         Deobfuscates given word.
 
         Returns:
             str: Deobfuscated word.
-        '''
+        """
 
         deobfuscation_table_single = self.__deobfuscation_table[
             'single_char_seq']
@@ -130,16 +140,16 @@ class TextPreparation:
 
     def __find_best_n_gram(self, word: str, candidates: list,
                            position: int) -> None | str:
-        '''
+        """
         Finds best n_gram for given word.
         Best means longest. If 2 or more n_grams fit - n_gram with the lowest amount will be chosen.
 
         Returns:
             str/None: More suitable candidate or None if there is no possible candidate.
-        '''
+        """
 
         best_candidate = None
-        best_lenght = 0
+        best_length = 0
         min_count = float('inf')
         l = r = position
 
@@ -151,11 +161,11 @@ class TextPreparation:
                                candidate + word[position + 1: r + 1]
 
                     if n_gramma in self.__n_grams.keys():
-                        if len(n_gramma) > best_lenght:
+                        if len(n_gramma) > best_length:
                             best_candidate = candidate
-                            best_lenght = len(n_gramma)
+                            best_length = len(n_gramma)
 
-                        elif len(n_gramma) == best_lenght:
+                        elif len(n_gramma) == best_length:
                             if self.__n_grams[n_gramma] < min_count:
                                 min_count = self.__n_grams[n_gramma]
                                 best_candidate = candidate
@@ -163,14 +173,14 @@ class TextPreparation:
         return best_candidate
 
     def __raw_preparing(self, text: str) -> list[str]:
-        '''
+        """
         Doing raw string preparing. Deletes url's, replaces letters, lowercasing all and splitting given text by spaces.
 
         Remove message footer(sign in yandex).
 
         Returns:
             list: Words array.
-        '''
+        """
 
         if ('--' in text):
             text = text[:text.rfind('--') + 1]

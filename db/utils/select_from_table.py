@@ -42,4 +42,5 @@ def select_from_table(statement: Select, skip: int = -1, limit: int = -1):
             print('Error during selecting from table', e)
 
         ss.close()
+
     return rows

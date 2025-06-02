@@ -2,7 +2,6 @@ from fastapi import (APIRouter, Query, Request, HTTPException)
 from db.utils import select_from_table
 from db.utils import select_from_answers_statement, select_from_model_answers_statement
 from db.db_models.pydantic import AnswerPost
-from src.utils.profanity_module import ProfanityModule
 from src.utils.post_learn.splitter import split
 
 router = APIRouter(prefix='/analyze', tags=['profanity'])
@@ -43,8 +42,8 @@ def analyze_text_get(request: Request,
 def get_model_answers_table(skip: int = Query(default=0,
                                         description='How much rows in table '
                                                     'we should skip'),
-                      limit: int = Query(default=20,
-                                         description='How much rows we want to get')):
+                            limit: int = Query(default=20,
+                                        description='How much rows we want to get')):
     '''
     Returns rows of model answers starts from skip+1 row and ends in
     skip+offset row.
@@ -58,6 +57,7 @@ def get_model_answers_table(skip: int = Query(default=0,
     table_headers = ['Текст до подготовки',
                      'Текст после подготовки',
                      'Дата обработки',
+                     'Дата обновления',
                      'Содержит маты',
                      'Токсичное',
                      'Содержит оскорбления',
@@ -77,7 +77,7 @@ def get_answers_table(skip: int = Query(default=0,
                                         description='How much rows in table '
                                                     'we should skip'),
                       limit: int = Query(default=20,
-                                         description='How much rows we want to get')):
+                                        description='How much rows we want to get')):
     '''
     Returns rows of answers starts from skip+1 row and ends in skip+offset row.
     Parameters:
@@ -96,6 +96,7 @@ def get_answers_table(skip: int = Query(default=0,
                      'Содержит репутационный риск для отправителя']
 
     result = select_from_table(select_from_answers_statement, skip, limit)
+
     return {
         'table_headers': table_headers,
         'rows': result
@@ -103,7 +104,18 @@ def get_answers_table(skip: int = Query(default=0,
 
 @router.post('/upload_answers/')
 def load_new_answers(request: Request,
-                     answers: AnswerPost):
+                     answers: AnswerPost,
+                     threshold: float = 0.5):
+    """
+
+    Args:
+        request: Request
+        answers: edited rows with actual answers
+        threshold: threshold by exceeding which label if classification will be 1
+
+    Returns:
+
+    """
     profanity_module = request.app.state.profanity_module
     profane_rows, semantic_rows = split(answers.rows)
-    profanity_module.post_learn(profanity_rows=profane_rows)
+    profanity_module.post_learn(profanity_rows=profane_rows, threshold = threshold)

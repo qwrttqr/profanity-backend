@@ -1,2 +1,2 @@
 from .text_analyzer import TextAnalyzer
-from .profanity_module import ProfanityModule
+from src.utils.post_learn.profanity_module import ProfanityModule

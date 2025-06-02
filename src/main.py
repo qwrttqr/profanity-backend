@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from src.api.main import api_router
 from src.utils import TextAnalyzer
 from db.utils.init_db import connect_db
-from src.utils.profanity_module import ProfanityModule
+from src.utils.post_learn.profanity_module import ProfanityModule
 from src.utils.load import model_path, vectorizer_path
 
 app = FastAPI()

@@ -1,16 +1,14 @@
-from .load import files
 from db.utils.db_collector import collect_information
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from .text_prepar import TextPreparation
-from .profanity_module import ProfanityModule
-from .load import model_path, vectorizer_path
+from src.utils.post_learn.profanity_module import ProfanityModule
 import torch
 
 
 class TextAnalyzer:
     '''
     Analyzing text on swear words and calculates text toxicity.
-    For swear analytics we finding stemming of word. For  toxicity analytics
+    For swear analytics we're finding stemming of word. For  toxicity analytics
     finding lemmas.
 
     Methods:
@@ -39,7 +37,7 @@ class TextAnalyzer:
             self.__model_toxicity.cuda()
 
     def predict_profanity(self, input_text: str, threshold: float = 0.5) -> int:
-        '''
+        """
         Predicts does text has profane words or not.
 
         Args:
@@ -49,7 +47,7 @@ class TextAnalyzer:
 
         Returns:
             class: int 1 if text contains profane words and 0 if not
-        '''
+        """
         try:
             predictions = self.__get_predict(input_text)
             preds = [0 if prob <
@@ -66,7 +64,7 @@ class TextAnalyzer:
 
     def analyze(self, text: str, threshold) -> dict[
         str, dict | int]:
-        '''
+        """
         Analyze given text for toxicity, offensiveness, threat content and
         reputational risks of the sender. Also provide information about
         profane words in text.
@@ -76,7 +74,7 @@ class TextAnalyzer:
 
         Returns:
             information: dict[str, dict | int]
-        '''
+        """
         text_before_processing = text
         text_after = ' '.join(
             self.__text_preparator.prepare_text(text,
@@ -94,7 +92,7 @@ class TextAnalyzer:
 
         collect_information(text_before_processing,
                             text_after_processing,
-                            analyzer_classes=analyzer_classes,
+                            semantic_classes=analyzer_classes,
                             profanity_class=profanity_class)
 
         return labels
