@@ -5,7 +5,7 @@ from sqlalchemy import select, update
 
 
 # Select for getting model answers rows
-select_from_model_answers_statement = (
+select_from_model_answers = (
     select(
         Text.text_before_processing,
         Text.text_after_processing,
@@ -22,7 +22,7 @@ select_from_model_answers_statement = (
 )
 
 # Select for getting answers rows
-select_from_answers_statement = (
+select_from_answers = (
     select(
         Text.id,
         Text.text_before_processing,
@@ -50,7 +50,6 @@ select_from_model_answers_for_profanity = (
 
 
 # Update model answers table
-
 update_profanity_id = (
     update(Text)
 )

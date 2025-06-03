@@ -1,6 +1,6 @@
 from fastapi import (APIRouter, Query, Request, HTTPException)
 from db.utils import select_from_table
-from db.utils import select_from_answers_statement, select_from_model_answers_statement
+from db.utils import select_from_answers, select_from_model_answers
 from db.db_models.pydantic import AnswerPost
 from src.utils.post_learn.splitter import split
 
@@ -64,7 +64,7 @@ def get_model_answers_table(skip: int = Query(default=0,
                      'Содержит угрозы',
                      'Содержит репутационный риск для отправителя']
 
-    result = select_from_table(select_from_model_answers_statement, skip, limit)
+    result = select_from_table(select_from_model_answers, skip, limit)
 
     return {
         'table_headers': table_headers,
@@ -95,7 +95,7 @@ def get_answers_table(skip: int = Query(default=0,
                      'Содержит угрозы',
                      'Содержит репутационный риск для отправителя']
 
-    result = select_from_table(select_from_answers_statement, skip, limit)
+    result = select_from_table(select_from_answers, skip, limit)
 
     return {
         'table_headers': table_headers,

@@ -15,6 +15,7 @@ class SemanticClasses(Base):
     texts: Mapped[list['Text']] = relationship(back_populates='semantic')
 
     def __repr__(self) -> str:
+
         return f'Semantic(id={self.id!r}, \
                     toxic_class={self.toxic_class!r}, \
                     insuilt_class={self.insult_class!r}, \

@@ -9,14 +9,14 @@ def collect_information(text_before: str,
                         text_after: str,
                         semantic_classes: dict,
                         profanity_class: int):
-    '''
-
+    """
+    Stores information id db tables.
     Args:
         text_before: str - text before processing
         text_after: str - text after processing
         semantic_classes: dict - list of analyzer classes
         profanity_class: int - profanity class
-    '''
+    """
 
     LocalSession = get_session()
 

@@ -5,7 +5,9 @@ from pathlib import Path
 
 
 def get_project_root() -> Path:
-    '''Returns the absolute path to the project root directory'''
+    """
+    Returns the absolute path to the project root directory
+    """
 
     return Path(__file__).parent.parent.parent
 
@@ -30,7 +32,7 @@ def load_file(
     file_type: str = 'file',
     binary: bool = False
 ):
-    '''
+    """
     Generic file loader with error handling.
 
     Args:
@@ -46,7 +48,7 @@ def load_file(
         FileNotFoundError: If file doesn't exist
         ValueError: For JSON decode errors
         RuntimeError: For other loading errors
-    '''
+    """
 
     try:
         mode = 'rb' if binary else 'r'

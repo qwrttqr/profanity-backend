@@ -32,6 +32,7 @@ class Text(Base):
         back_populates='texts')
 
     def __repr__(self) -> str:
+
         return f'Text(id={self.id!r}, \
                     semantic_id={self.semantic_id!r}, \
                     profanity_id={self.profanity_id!r}, \

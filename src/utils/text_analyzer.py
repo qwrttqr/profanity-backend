@@ -107,7 +107,7 @@ class TextAnalyzer:
         Calculate toxicity of a text.
         Returns dictionary of text aspects:
             [toxic, insult, threat, dangerous]
-        Threshould should be from 0 to 1. This param controls border to mark.
+        Threshold should be from 0 to 1. This param controls border to mark.
 
         ATTENTION
             The model for predictions got from here https://huggingface.co/cointegrated/rubert-tiny-toxicity

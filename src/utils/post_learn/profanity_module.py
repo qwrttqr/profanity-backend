@@ -27,8 +27,8 @@ class ProfanityModule:
                                      joblib.load, 'rb',
                                      True)
             self.__vectorizer = load_file(vectorizer_path,
-                                          joblib.load, 'rb'
-                                          , True)
+                                          joblib.load, 'rb',
+                                          True)
             self.initialized = True
             self.__model_path = model_path
             self.__vectorizer_path = vectorizer_path
@@ -60,7 +60,7 @@ class ProfanityModule:
                                                deobfuscation=False)
 
     def __prepare_data(self, profanity_rows: list[dict[str, int | str | dict]]):
-        '''
+        """
         Creates dataframe based on currently known data and new data
         Args:
             profanity_rows: list[dict[str, int | str]] - array of new data
@@ -68,7 +68,7 @@ class ProfanityModule:
         Returns:
             dataframe: pandas.DataFrame - dataframe with 2 columns
 
-        '''
+        """
         rows = select_from_table(statement=select_from_model_answers_for_profanity)
         data = {
             'text': [],
@@ -93,7 +93,7 @@ class ProfanityModule:
         Train a profanity classification model with calibrated probabilities
 
         Returns:
-            tuple: (trained_model, vectorizer, test_metrics)
+
         """
         dataframe = self.__prepare_data(profanity_rows)
 
@@ -159,7 +159,7 @@ class ProfanityModule:
             prediction = self.__model.predict_proba(vectorized)[:, 1]
             class_ = 1 if prediction >= threshold else 0
             profanity_id = get_id(table_type='profanity_table', profanity_class=class_)
-            update_table(update_profanity_id,{'id': item['id']},
+            update_table(update_profanity_id,where ={'id': item['id']},
                          values={'profanity_id': profanity_id})
 
 

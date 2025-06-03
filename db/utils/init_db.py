@@ -8,10 +8,10 @@ from sqlalchemy.exc import DatabaseError
 db_engine: Engine | None = None
 
 def connect_db():
-    '''
+    """
     Returns:
         db engine : Engine - database engine
-    '''
+    """
     dotenv.load_dotenv()
     database_username = os.environ.get('DB_USERNAME')
     database_password = os.environ.get('DB_PASSWORD')

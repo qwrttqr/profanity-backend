@@ -5,9 +5,8 @@ from db.utils.session import get_session
 
 
 def table_collisions(table: ProfanityClasses | SemanticClasses | Answer,
-                     data: ProfanityClasses | SemanticClasses | Answer) -> (
-        int | None):
-    '''
+                     data: ProfanityClasses | SemanticClasses | Answer) -> int | None:
+    """
     Finds rows in table that will correspond current set of classes.
     Returns None is there is no row with that set or int with id which row
     with that set contain.
@@ -16,7 +15,7 @@ def table_collisions(table: ProfanityClasses | SemanticClasses | Answer,
         data: Object constructed from SQLAlchemy table type
     Returns:
         id: (int | None) - if id exist returns it otherwise returns None
-    '''
+    """
     LocalSession = get_session()
 
     with LocalSession() as ss:
