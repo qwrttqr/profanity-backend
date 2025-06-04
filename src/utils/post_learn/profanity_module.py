@@ -12,6 +12,9 @@ from sklearn.calibration import CalibratedClassifierCV
 from src.utils.text_prepar import TextPreparation
 from db.utils.update_table import get_id, update_table
 from db.utils.statemenents import update_profanity_id
+from src.utils.load import profanity_model_path, profanity_vectorizer_path
+
+
 
 class ProfanityModule:
     ProfanityModuleInstance = None
@@ -21,17 +24,17 @@ class ProfanityModule:
             cls.ProfanityModuleInstance = super().__new__(cls)
         return cls.ProfanityModuleInstance
 
-    def __init__(self, model_path, vectorizer_path):
+    def __init__(self):
         if not hasattr(self, 'initialized'):
-            self.__model = load_file(model_path,
+            self.__model = load_file(profanity_model_path,
                                      joblib.load, 'rb',
                                      True)
-            self.__vectorizer = load_file(vectorizer_path,
+            self.__vectorizer = load_file(profanity_vectorizer_path,
                                           joblib.load, 'rb',
                                           True)
             self.initialized = True
-            self.__model_path = model_path
-            self.__vectorizer_path = vectorizer_path
+            self.__model_path = profanity_model_path
+            self.__vectorizer_path = profanity_vectorizer_path
             self.__observers = []
             self.__text_prepar = TextPreparation()
 
@@ -53,6 +56,7 @@ class ProfanityModule:
                 item.update()
             except Exception as e:
                 print('Error during observer notifying', e)
+                raise Exception('Error during observer notifying')
 
     def __prepare_word(self, elem: str) -> list[str]:
         return self.__text_prepar.prepare_text(elem,
@@ -97,7 +101,6 @@ class ProfanityModule:
         """
         dataframe = self.__prepare_data(profanity_rows)
 
-        print(profanity_rows)
         rows = []
         for item in profanity_rows:
             rows.append({
@@ -163,4 +166,7 @@ class ProfanityModule:
                          values={'profanity_id': profanity_id})
 
 
-        self.__notify()
+        try:
+            self.__notify()
+        except Exception as e:
+            raise Exception(f'Error during post learning: {str(e)}')

@@ -102,7 +102,7 @@ def get_answers_table(skip: int = Query(default=0,
         'rows': result
     }
 
-@router.post('/upload_answers/')
+@router.post('/upload_answers/', status_code=200)
 def load_new_answers(request: Request,
                      answers: AnswerPost,
                      threshold: float = 0.5):
@@ -116,6 +116,18 @@ def load_new_answers(request: Request,
     Returns:
 
     """
-    profanity_module = request.app.state.profanity_module
-    profane_rows, semantic_rows = split(answers.rows)
-    profanity_module.post_learn(profanity_rows=profane_rows, threshold = threshold)
+    try:
+        profanity_module = request.app.state.profanity_module
+        semantic_module = request.app.state.semantic_module
+        text_analyzer = request.app.state.analyzer
+        profane_rows, semantic_rows = split(answers.rows)
+        if profane_rows:
+            profanity_module.post_learn(profanity_rows=profane_rows, threshold = threshold)
+        if semantic_rows:
+            semantic_module.post_learn(semantic_rows = semantic_rows,
+                                       text_analyzer = text_analyzer,
+                                       threshold=threshold)
+    except Exception as e:
+        print(f'Error during post-learning: {str(e)}')
+        raise HTTPException(status_code=500,
+                        detail=f'Error during post-learning: {str(e)}')

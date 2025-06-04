@@ -40,9 +40,22 @@ select_from_answers = (
 # Select for profanity post-learning
 select_from_model_answers_for_profanity = (
     select(
+        Text.id,
         Text.text_after_processing,
         ProfanityClasses.profanity_class
     ).join(Text.profanity)
+)
+
+# Select for semantic post-learning
+select_from_model_answers_for_semantic = (
+    select(
+        Text.id,
+        Text.text_after_processing,
+        SemanticClasses.toxic_class,
+        SemanticClasses.insult_class,
+        SemanticClasses.threat_class,
+        SemanticClasses.dangerous_class
+    ).join(Text.semantic)
 )
 
 

@@ -1,40 +1,41 @@
 from db.utils.db_collector import collect_information
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from .text_prepar import TextPreparation
 from src.utils.post_learn.profanity_module import ProfanityModule
+
 import torch
 
 
 class TextAnalyzer:
-    '''
+    """
     Analyzing text on swear words and calculates text toxicity.
     For swear analytics we're finding stemming of word. For  toxicity analytics
     finding lemmas.
 
     Methods:
     predict_profanity(input_text, threshold=0.5):
-        Predict whether the input text contains profanity based on a specified threshold. 
+        Predict whether the input text contains profanity based on a specified threshold.
 
     predict_proba_profanity(input_text):
         Predict the probability that the input text contains profanity.
 
     analyze_toxicity(text, aggregate, return_proba, threshold)
         Calculate (if return_proba = False) class for given text(0 - non-toxic, 1-toxic). Otherwise (if return_proba = True) returns based on aggregate param(if aggregate = True returns probability of a text to be toxic, if aggregate = False vector of a probability aspects).
-    '''
+    """
 
-    def __init__(self, profanity_module: ProfanityModule):
+    def __init__(self, profanity_module, semantic_module):
         self.__text_preparator = TextPreparation()
+
         self.__profanity_module = profanity_module
         self.__profanity_module.attach(self)
-        self.__vectorizer = self.__profanity_module.get_vectorizer()
-        self.__model_profanity = self.__profanity_module.get_model()
-        model_checkpoint = 'cointegrated/rubert-tiny-toxicity'
-        self.__tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
-        self.__model_toxicity = AutoModelForSequenceClassification.from_pretrained(
-            model_checkpoint)
 
-        if torch.cuda.is_available():
-            self.__model_toxicity.cuda()
+        self.__semantic_module = semantic_module
+        self.__semantic_module.attach(self)
+
+        self.__model_profanity = self.__profanity_module.get_model()
+        self.__vectorizer = self.__profanity_module.get_vectorizer()
+
+        self.__semantic_model = self.__semantic_module.get_model()
+        self.__semantic_tokenizer = self.__semantic_module.get_tokenizer()
 
     def predict_profanity(self, input_text: str, threshold: float = 0.5) -> int:
         """
@@ -101,27 +102,17 @@ class TextAnalyzer:
         self.__model_profanity = self.__profanity_module.get_model()
         self.__vectorizer = self.__profanity_module.get_vectorizer()
 
-    def __analyze_toxicity(self, text: str, threshold: float) \
-            -> dict[str, int]:
-        '''
-        Calculate toxicity of a text.
-        Returns dictionary of text aspects:
-            [toxic, insult, threat, dangerous]
-        Threshold should be from 0 to 1. This param controls border to mark.
-
-        ATTENTION
-            The model for predictions got from here https://huggingface.co/cointegrated/rubert-tiny-toxicity
-        '''
-
+    def get_semantic_labels(self, text: str, threshold: float) -> list[int]:
+        # get the semantic labels based on threshold
         with torch.no_grad():
-            inputs = self.__tokenizer(
+            inputs = self.__semantic_tokenizer(
                 text, return_tensors='pt',
                 truncation=True, padding=True).to(
-                self.__model_toxicity.device
+                self.__semantic_model.device
             )
 
             proba = torch.sigmoid(
-                self.__model_toxicity(
+                self.__semantic_model(
                     **inputs
                 ).logits).cpu().numpy()
 
@@ -130,6 +121,22 @@ class TextAnalyzer:
 
         probas = [(1 - proba[0]) * proba[-1]] + list(proba)[1:]
         probas = [int(i >= threshold) for i in probas]
+
+        return probas
+
+    def __analyze_toxicity(self, text: str, threshold: float) \
+            -> dict[str, int]:
+        """
+        Calculate toxicity of a text.
+        Returns dictionary of text aspects:
+            [toxic, insult, threat, dangerous]
+        Threshold should be from 0 to 1. This param controls border to mark.
+
+        ATTENTION
+            The model for predictions got from here https://huggingface.co/cointegrated/rubert-tiny-toxicity
+        """
+
+        probas = self.get_semantic_labels(text, threshold)
 
         text_labels = {
             'toxic': probas[0],
