@@ -60,9 +60,11 @@ select_from_model_answers_for_semantic = (
 
 
 ########################## UPDATE STATEMENTS ##########################
-
-
 # Update model answers table
 update_profanity_id = (
     update(Text)
+)
+
+update_semantic_id = (
+    update(SemanticClasses)
 )

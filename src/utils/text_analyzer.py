@@ -1,7 +1,5 @@
 from db.utils.db_collector import collect_information
 from .text_prepar import TextPreparation
-from src.utils.post_learn.profanity_module import ProfanityModule
-
 import torch
 
 
@@ -102,7 +100,8 @@ class TextAnalyzer:
         self.__model_profanity = self.__profanity_module.get_model()
         self.__vectorizer = self.__profanity_module.get_vectorizer()
 
-    def get_semantic_labels(self, text: str, threshold: float) -> list[int]:
+    def get_semantic_labels(self, text: str, threshold: float,
+                            return_classes: bool = True) -> list[int]:
         # get the semantic labels based on threshold
         with torch.no_grad():
             inputs = self.__semantic_tokenizer(

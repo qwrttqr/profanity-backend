@@ -1,9 +1,15 @@
 import pandas as pd
+import numpy as np
 from src.utils.text_analyzer import TextAnalyzer
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
+from transformers import (AutoTokenizer, AutoModelForSequenceClassification, TrainingArguments,
+                          Trainer)
+from datasets import Dataset
 from src.utils.load import semantic_directory_path
 from db.utils.select_from_table import select_from_table
 from db.utils.statemenents import select_from_model_answers_for_semantic
+from sklearn.metrics import roc_auc_score
+from db.utils.update_table import get_id, update_table
+from db.utils.statemenents import update_semantic_id
 import torch
 
 
@@ -19,8 +25,8 @@ class SemanticModule:
         if not hasattr(self, 'initialized'):
             self.__semantic_directory = semantic_directory_path
             self.__tokenizer = AutoTokenizer.from_pretrained(self.__semantic_directory)
-            self.__model = AutoModelForSequenceClassification.from_pretrained(self.__semantic_directory)
-
+            self.__model = AutoModelForSequenceClassification.from_pretrained(
+                self.__semantic_directory)
 
             device = "cuda" if torch.cuda.is_available() else "cpu"
             self.__model.to(device)
@@ -67,6 +73,7 @@ class SemanticModule:
         """
         rows = select_from_table(statement=select_from_model_answers_for_semantic)
         data = {}
+
         for item in rows:
             model_lab = text_analyzer.get_semantic_labels(item['text_after_processing'],
                                                           threshold=threshold)
@@ -83,8 +90,9 @@ class SemanticModule:
             }
 
         for item in semantic_rows:
-            model_lab = text_analyzer.get_semantic_labels(data[item['id']]['text_after_processing'],
+            model_lab = text_analyzer.get_semantic_labels(data[item['id']]['text'],
                                                           threshold=threshold)
+            print(data[item['id']]['text'])
             label = [1 - item['toxic_class'],
                      item['insult_class'],
                      model_lab[2],
@@ -100,17 +108,102 @@ class SemanticModule:
                 'labels': value['labels']
             }
             cleaned_data.append(row)
-        return pd.DataFrame(cleaned_data)
+
+        df = pd.DataFrame(cleaned_data)
+        df['labels'] = df['labels'].apply(lambda x: [float(i) for i in x])
+
+        return df
 
     def post_learn(self, semantic_rows, text_analyzer: TextAnalyzer, threshold: float = 0.5):
         """
-        Train a profanity classification model with calibrated probabilities
+        Train a semantic classification model by given rows
 
         Returns:
 
         """
-        dataframe = self.__prepare_data(semantic_rows = semantic_rows,
+        dataframe = self.__prepare_data(semantic_rows=semantic_rows,
                                         text_analyzer=text_analyzer,
                                         threshold=threshold)
 
-        print(dataframe)
+        rows = []
+        print(semantic_rows)
+        for item in semantic_rows:
+            rows.append({
+                'id': item['id'],
+                'phrase': item['text_after_processing']
+            })
+        dataset = Dataset.from_pandas(dataframe)
+        dataset = dataset.shuffle(seed=42)
+        train_test_split = dataset.train_test_split(test_size=0.1)
+        train_dataset = train_test_split['train']
+        eval_dataset = train_test_split['test']
+
+        def tokenize_function(examples):
+            return self.__tokenizer(examples["text"], padding="max_length", truncation=True,
+                                    max_length=128)
+
+        tokenized_train = train_dataset.map(tokenize_function, batched=True)
+        tokenized_eval = eval_dataset.map(tokenize_function, batched=True)
+
+        def compute_metrics(pred):
+            logits, labels = pred
+
+            # Convert logits to probabilities
+            probs = torch.sigmoid(torch.tensor(logits)).numpy()
+
+            # Ensure labels are numpy array
+            labels = np.array(labels)
+
+            # Compute ROC AUC
+            auc = roc_auc_score(labels, probs, multi_class='ovr')
+
+            return {'roc_auc': auc}
+
+        training_args = TrainingArguments(
+            eval_strategy="epoch",
+            learning_rate=1e-5,
+            per_device_train_batch_size=16,
+            num_train_epochs=5,
+            weight_decay=0.01,
+            save_strategy="epoch",
+            load_best_model_at_end=True,
+            metric_for_best_model="roc_auc",
+            report_to="none"
+        )
+        trainer = Trainer(
+            model=self.__model,
+            args=training_args,
+            train_dataset=tokenized_train,
+            eval_dataset=tokenized_eval,
+            compute_metrics=compute_metrics,
+        )
+
+        trainer.train()
+
+        self.__model.save_pretrained(self.__semantic_directory)
+        self.__tokenizer.save_pretrained(self.__semantic_directory)
+
+        try:
+            self.__notify()
+        except Exception as e:
+            print(f'Error during notifying from semantic_module {str(e)}')
+            raise Exception(f'Error during notifying from semantic_module {str(e)}')
+
+        for item in rows:
+            labels = text_analyzer.get_semantic_labels(text=item['phrase'],
+                                                       threshold=threshold)
+
+            text_labels = {
+                'toxic': labels[0],
+                'insult': labels[1],
+                'threat': labels[3],
+                'dangerous': labels[4]
+            }
+
+            semantic_id = get_id(table_type='semantic_table',
+                                 semantic_classes=text_labels)
+
+            update_table(update_semantic_id,where ={'id': item['id']},
+                         values={'semantic_id': semantic_id})
+
+

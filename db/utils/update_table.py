@@ -8,7 +8,7 @@ from db.db_models.sqlalchemy.profanity_classes import ProfanityClasses
 from db.db_models.sqlalchemy.semantic_classes import SemanticClasses
 
 def get_id(table_type: str,
-           semantic_classes: dict = None, profanity_class: int = None) -> int | None:
+           semantic_classes: dict[str, int] = None, profanity_class: int = None) -> int | None:
     """
     Trying to find id with same classes or creates new table row
     Args:
