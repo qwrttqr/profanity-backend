@@ -1,16 +1,18 @@
+import os
+import gc
 import pandas as pd
-import numpy as np
+import torch
 from src.utils.text_analyzer import TextAnalyzer
 from transformers import (AutoTokenizer, AutoModelForSequenceClassification, TrainingArguments,
                           Trainer)
 from datasets import Dataset
 from src.utils.load import semantic_directory_path
+from src.utils.config import get_semantic_ver, save_semantic_ver
 from db.utils.select_from_table import select_from_table
-from db.utils.statemenents import select_from_model_answers_for_semantic
-from sklearn.metrics import roc_auc_score
+from db.utils.statemenents import select_from_model_answers_for_semantic, update_semantic_id
+from sklearn.metrics import roc_auc_score, accuracy_score, f1_score
 from db.utils.update_table import get_id, update_table
-from db.utils.statemenents import update_semantic_id
-import torch
+
 
 
 class SemanticModule:
@@ -23,7 +25,9 @@ class SemanticModule:
 
     def __init__(self):
         if not hasattr(self, 'initialized'):
-            self.__semantic_directory = semantic_directory_path
+            self.__model_ver = get_semantic_ver()
+            self.__semantic_directory = semantic_directory_path / f'ver{self.__model_ver}'
+
             self.__tokenizer = AutoTokenizer.from_pretrained(self.__semantic_directory)
             self.__model = AutoModelForSequenceClassification.from_pretrained(
                 self.__semantic_directory)
@@ -92,7 +96,6 @@ class SemanticModule:
         for item in semantic_rows:
             model_lab = text_analyzer.get_semantic_labels(data[item['id']]['text'],
                                                           threshold=threshold)
-            print(data[item['id']]['text'])
             label = [1 - item['toxic_class'],
                      item['insult_class'],
                      model_lab[2],
@@ -126,14 +129,15 @@ class SemanticModule:
                                         threshold=threshold)
 
         rows = []
-        print(semantic_rows)
         for item in semantic_rows:
             rows.append({
                 'id': item['id'],
                 'phrase': item['text_after_processing']
             })
+
         dataset = Dataset.from_pandas(dataframe)
         dataset = dataset.shuffle(seed=42)
+
         train_test_split = dataset.train_test_split(test_size=0.1)
         train_dataset = train_test_split['train']
         eval_dataset = train_test_split['test']
@@ -144,32 +148,60 @@ class SemanticModule:
 
         tokenized_train = train_dataset.map(tokenize_function, batched=True)
         tokenized_eval = eval_dataset.map(tokenize_function, batched=True)
-
+        use_auc = True
         def compute_metrics(pred):
             logits, labels = pred
-
-            # Convert logits to probabilities
             probs = torch.sigmoid(torch.tensor(logits)).numpy()
+            preds = (probs >= 0.5).astype(int)
+            global use_auc
 
-            # Ensure labels are numpy array
-            labels = np.array(labels)
+            try:
+                auc = roc_auc_score(labels, probs, multi_class='ovr', average='macro')
+            except:
+                print('Cannot use auc_roc, using F1 instead')
+                auc = None
 
-            # Compute ROC AUC
-            auc = roc_auc_score(labels, probs, multi_class='ovr')
+            acc = accuracy_score(labels, preds)
+            f1 = f1_score(labels, preds, average='macro')
+            if auc is None:
+                use_auc = False
+                return {
+                    'accuracy': acc,
+                    'f1': f1
+                }
+            else:
+                return {
+                    'roc_auc': auc,
+                    'accuracy': acc,
+                    'f1': f1
+                }
+        print(use_auc, 'использовать аук')
+        if use_auc:
+            training_args = TrainingArguments(
+                eval_strategy="epoch",
+                learning_rate=1e-5,
+                per_device_train_batch_size=16,
+                num_train_epochs=5,
+                weight_decay=0.01,
+                save_strategy="epoch",
+                load_best_model_at_end=True,
+                metric_for_best_model="roc_auc",
+                report_to="none"
+            )
+        else:
+            training_args = TrainingArguments(
+                eval_strategy="epoch",
+                learning_rate=1e-5,
+                per_device_train_batch_size=16,
+                num_train_epochs=5,
+                weight_decay=0.01,
+                save_strategy="epoch",
+                load_best_model_at_end=True,
+                metric_for_best_model="f1",
+                greater_is_better=True,
+                report_to="none"
+            )
 
-            return {'roc_auc': auc}
-
-        training_args = TrainingArguments(
-            eval_strategy="epoch",
-            learning_rate=1e-5,
-            per_device_train_batch_size=16,
-            num_train_epochs=5,
-            weight_decay=0.01,
-            save_strategy="epoch",
-            load_best_model_at_end=True,
-            metric_for_best_model="roc_auc",
-            report_to="none"
-        )
         trainer = Trainer(
             model=self.__model,
             args=training_args,
@@ -179,10 +211,33 @@ class SemanticModule:
         )
 
         trainer.train()
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.__model.to(device)
+
+        if torch.cuda.is_available():
+            self.__model.cuda()
+
+        self.__model_ver += 1
+
+        self.__semantic_directory = semantic_directory_path / f'ver{self.__model_ver}'
+        os.makedirs(semantic_directory_path / f'ver{self.__model_ver}')
+
+        gc.collect()
+        torch.cuda.empty_cache()
 
         self.__model.save_pretrained(self.__semantic_directory)
         self.__tokenizer.save_pretrained(self.__semantic_directory)
 
+        del self.__model
+        del self.__tokenizer
+
+        self.__model = AutoModelForSequenceClassification.from_pretrained(self.__semantic_directory)
+        self.__tokenizer = AutoTokenizer.from_pretrained(self.__semantic_directory)
+
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.__model.to(device)
+
+        save_semantic_ver(self.__model_ver)
         try:
             self.__notify()
         except Exception as e:
@@ -192,7 +247,6 @@ class SemanticModule:
         for item in rows:
             labels = text_analyzer.get_semantic_labels(text=item['phrase'],
                                                        threshold=threshold)
-
             text_labels = {
                 'toxic': labels[0],
                 'insult': labels[1],

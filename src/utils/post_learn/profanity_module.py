@@ -1,6 +1,7 @@
 import joblib
 import pandas as pd
 import numpy as np
+import os
 from src.utils.load import load_file
 from sklearn.model_selection import train_test_split, GridSearchCV
 from db.utils.select_from_table import select_from_table
@@ -12,8 +13,8 @@ from sklearn.calibration import CalibratedClassifierCV
 from src.utils.text_prepar import TextPreparation
 from db.utils.update_table import get_id, update_table
 from db.utils.statemenents import update_profanity_id
-from src.utils.load import profanity_model_path, profanity_vectorizer_path
-
+from src.utils.load import profanity_path
+from src.utils.config import get_profanity_ver, save_profanity_ver
 
 
 class ProfanityModule:
@@ -26,15 +27,22 @@ class ProfanityModule:
 
     def __init__(self):
         if not hasattr(self, 'initialized'):
-            self.__model = load_file(profanity_model_path,
+            self.__profanity_model_ver = get_profanity_ver()
+
+            self.__model_path = (profanity_path / f'ver{self.__profanity_model_ver}' /
+                                 'models.joblib')
+
+            self.__vectorizer_path = profanity_path / \
+            f'ver{self.__profanity_model_ver}' / 'vectorizer.joblib'
+
+
+            self.__model = load_file(self.__model_path,
                                      joblib.load, 'rb',
                                      True)
-            self.__vectorizer = load_file(profanity_vectorizer_path,
+            self.__vectorizer = load_file(self.__vectorizer_path,
                                           joblib.load, 'rb',
                                           True)
             self.initialized = True
-            self.__model_path = profanity_model_path
-            self.__vectorizer_path = profanity_vectorizer_path
             self.__observers = []
             self.__text_prepar = TextPreparation()
 
@@ -105,7 +113,7 @@ class ProfanityModule:
         for item in profanity_rows:
             rows.append({
                 'id' : item['id'],
-                'phrase': item['meta']['profane_words']
+                'phrase': self.__prepare_word(' '.join(item['meta']['profane_words']))
         })
 
         X, y = dataframe.text, dataframe.profanity_class
@@ -154,8 +162,20 @@ class ProfanityModule:
         self.__model = final_clf
         self.__vectorizer = vectorizer
 
+        self.__profanity_model_ver += 1
+
+        os.makedirs(profanity_path / f'ver{self.__profanity_model_ver}')
+
+        self.__model_path = (profanity_path / f'ver{self.__profanity_model_ver}' /
+                             'models.joblib')
+
+        self.__vectorizer_path = (profanity_path / f'ver{self.__profanity_model_ver}' /
+                             'vectorizer.joblib')
+
         joblib.dump(self.__model, self.__model_path)
         joblib.dump(self.__vectorizer, self.__vectorizer_path)
+
+        save_profanity_ver(self.__profanity_model_ver)
 
         for item in rows:
             vectorized = self.__vectorizer.transform(item['phrase'])
@@ -165,8 +185,8 @@ class ProfanityModule:
             update_table(update_profanity_id,where ={'id': item['id']},
                          values={'profanity_id': profanity_id})
 
-
         try:
             self.__notify()
         except Exception as e:
-            raise Exception(f'Error during post learning: {str(e)}')
+            print(f'Error during profanity post-learning: {str(e)}')
+            raise Exception(f'Error during profanity post-learning: {str(e)}')

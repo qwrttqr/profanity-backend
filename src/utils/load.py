@@ -12,18 +12,17 @@ def get_project_root() -> Path:
     return Path(__file__).parent.parent.parent
 
 
+config_path = get_project_root() / 'config.json'
 n_grams_path = get_project_root() / 'files' / 'n_grams.json'
 deobfuscation_table_path = get_project_root() / 'files' / \
                            'deobfuscation_table.json'
-profanity_vectorizer_path = (get_project_root() / 'models' /
-                             'vectorizer.joblib')
-profanity_model_path = (get_project_root() / 'models' /
-                        'model.joblib')
+profanity_path = get_project_root() / 'models' / 'profanity_model'
 semantic_directory_path = (get_project_root() / 'models' / 'semantic_model')
 
 files = {
     'n-grams': None,
-    'deobfuscation_table': None
+    'deobfuscation_table': None,
+    'config': None
 }
 
 
@@ -75,3 +74,4 @@ files['n-grams'] = load_file(n_grams_path, json.load, 'r', False)
 files['deobfuscation_table'] = load_file(
     deobfuscation_table_path,
     json.load, 'r', False)
+files['config'] = load_file(config_path, json.load, 'r', False)

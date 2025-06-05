@@ -19,7 +19,7 @@ async def startup():
 try:
     connect_db()
 except Exception as e:
-    print('Error connecting to db', e)
+    print(f'Error connecting to db {str(e)}')
 
 
 app.add_middleware(

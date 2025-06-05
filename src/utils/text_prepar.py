@@ -206,7 +206,7 @@ class TextPreparation:
                 r'\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])'
             )
         }
-
+        print(text)
         text = patterns['whitespace'].sub(' ', text)
         text = patterns['line_breaks'].sub(' ', text)
         text = patterns['urls'].sub('', text)

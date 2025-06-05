@@ -1,6 +1,6 @@
 {
   "best_global_step": 87,
-  "best_metric": 0.9949292297564188,
+  "best_metric": 1.0,
   "best_model_checkpoint": "trainer_output\\checkpoint-87",
   "epoch": 4.0,
   "eval_steps": 500,
@@ -11,38 +11,46 @@
   "log_history": [
     {
       "epoch": 1.0,
-      "eval_loss": 0.04941508173942566,
-      "eval_roc_auc": 0.9949292297564188,
-      "eval_runtime": 0.637,
-      "eval_samples_per_second": 241.76,
-      "eval_steps_per_second": 31.397,
+      "eval_accuracy": 0.961038961038961,
+      "eval_f1": 0.985508166969147,
+      "eval_loss": 0.030372412875294685,
+      "eval_roc_auc": 1.0,
+      "eval_runtime": 0.5763,
+      "eval_samples_per_second": 267.208,
+      "eval_steps_per_second": 34.702,
       "step": 87
     },
     {
       "epoch": 2.0,
-      "eval_loss": 0.048313532024621964,
-      "eval_roc_auc": 0.9945426889738526,
-      "eval_runtime": 0.6036,
-      "eval_samples_per_second": 255.154,
-      "eval_steps_per_second": 33.137,
+      "eval_accuracy": 0.974025974025974,
+      "eval_f1": 0.9896743261620001,
+      "eval_loss": 0.024848073720932007,
+      "eval_roc_auc": 0.9998915863040285,
+      "eval_runtime": 0.6029,
+      "eval_samples_per_second": 255.447,
+      "eval_steps_per_second": 33.175,
       "step": 174
     },
     {
       "epoch": 3.0,
-      "eval_loss": 0.04805293679237366,
-      "eval_roc_auc": 0.9945500476865685,
-      "eval_runtime": 0.5885,
-      "eval_samples_per_second": 261.672,
-      "eval_steps_per_second": 33.983,
+      "eval_accuracy": 0.9675324675324676,
+      "eval_f1": 0.9878070175438596,
+      "eval_loss": 0.032089777290821075,
+      "eval_roc_auc": 1.0,
+      "eval_runtime": 0.5866,
+      "eval_samples_per_second": 262.52,
+      "eval_steps_per_second": 34.094,
       "step": 261
     },
     {
       "epoch": 4.0,
-      "eval_loss": 0.04651126638054848,
-      "eval_roc_auc": 0.9947201157137794,
-      "eval_runtime": 0.5993,
-      "eval_samples_per_second": 256.969,
-      "eval_steps_per_second": 33.373,
+      "eval_accuracy": 0.9675324675324676,
+      "eval_f1": 0.9878070175438596,
+      "eval_loss": 0.028253167867660522,
+      "eval_roc_auc": 0.9998833479148439,
+      "eval_runtime": 0.5656,
+      "eval_samples_per_second": 272.253,
+      "eval_steps_per_second": 35.358,
       "step": 348
     }
   ],
@@ -63,7 +71,7 @@
       "attributes": {}
     }
   },
-  "total_flos": 10187763477504.0,
+  "total_flos": 10209894752256.0,
   "train_batch_size": 16,
   "trial_name": null,
   "trial_params": null
