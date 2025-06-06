@@ -178,3 +178,4 @@ cython_debug/
 n_grams.json
 ipynb_checkpoints/
 models/
+trainer_output/

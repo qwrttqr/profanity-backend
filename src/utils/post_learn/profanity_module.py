@@ -93,7 +93,7 @@ class ProfanityModule:
             data['profanity_class'].append(item['profanity_class'])
 
         for item in profanity_rows:
-            for elem in item['meta']['profane_words']:
+            for elem in item['meta']['words']:
                 prepared_elem = self.__prepare_word(elem)
                 data['text'].append(' '.join(prepared_elem))
                 data['profanity_class'].append(item['profanity_class'])
@@ -113,7 +113,7 @@ class ProfanityModule:
         for item in profanity_rows:
             rows.append({
                 'id' : item['id'],
-                'phrase': self.__prepare_word(' '.join(item['meta']['profane_words']))
+                'phrase': self.__prepare_word(' '.join(item['meta']['words']))
         })
 
         X, y = dataframe.text, dataframe.profanity_class

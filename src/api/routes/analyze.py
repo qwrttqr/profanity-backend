@@ -78,7 +78,7 @@ def get_answers_table(skip: int = Query(default=0,
                                                     'we should skip'),
                       limit: int = Query(default=20,
                                         description='How much rows we want to get')):
-    '''
+    """
     Returns rows of answers starts from skip+1 row and ends in skip+offset row.
     Parameters:
         skip : int - how much rows to skip.
@@ -86,7 +86,7 @@ def get_answers_table(skip: int = Query(default=0,
     Returns:
         'table_headers': list - headers of the table
         'rows': list - list of array rows
-    '''
+    """
     table_headers = ['Текст до подготовки',
                      'Текст после подготовки',
                      'Содержит маты',
@@ -121,6 +121,7 @@ def load_new_answers(request: Request,
     semantic_module = request.app.state.semantic_module
     text_analyzer = request.app.state.analyzer
     profane_rows, semantic_rows = split(answers.rows)
+    print(profane_rows, semantic_rows)
     if profane_rows:
         profanity_module.post_learn(profanity_rows=profane_rows, threshold = threshold)
     if semantic_rows:
