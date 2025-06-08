@@ -57,7 +57,7 @@ class SemanticModule:
     def __notify(self):
         for item in self.__observers:
             try:
-                item.update()
+                item.update_semantic()
             except Exception as e:
                 print('Error during observer notifying', e)
                 raise Exception('Error during observer notifying')
@@ -120,9 +120,6 @@ class SemanticModule:
     def post_learn(self, semantic_rows, text_analyzer: TextAnalyzer, threshold: float = 0.5):
         """
         Train a semantic classification model by given rows
-
-        Returns:
-
         """
         dataframe = self.__prepare_data(semantic_rows=semantic_rows,
                                         text_analyzer=text_analyzer,
@@ -175,7 +172,7 @@ class SemanticModule:
                     'accuracy': acc,
                     'f1': f1
                 }
-        print(use_auc, 'использовать аук')
+
         if use_auc:
             training_args = TrainingArguments(
                 eval_strategy="epoch",
@@ -238,11 +235,8 @@ class SemanticModule:
         self.__model.to(device)
 
         save_semantic_ver(self.__model_ver)
-        try:
-            self.__notify()
-        except Exception as e:
-            print(f'Error during notifying from semantic_module {str(e)}')
-            raise Exception(f'Error during notifying from semantic_module {str(e)}')
+
+        self.__notify()
 
         for item in rows:
             labels = text_analyzer.get_semantic_labels(text=item['phrase'],

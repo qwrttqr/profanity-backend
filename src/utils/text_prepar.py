@@ -4,6 +4,8 @@ from pymorphy2 import MorphAnalyzer
 from nltk.stem.snowball import SnowballStemmer
 
 
+
+
 class TextPreparation:
     """
     Prepares text for the processing with the next pipeline step.
@@ -40,28 +42,32 @@ class TextPreparation:
 
     def prepare_text(self,
                      text: str, word_basing_method: str = 'lemmatization',
-                     deobfuscation: bool = True, basing: bool = True) -> list[str]:
+                     deobfuscation: bool = True, basing: bool = True,
+                     remove_redundant_symbols = True) -> list[str]:
         """
         Prepares the text.
 
         Parameters:
-            text(str): text should be prepared.
-            word_basing_method(str): which method of word basing we should use. Should be 'lemmatization' or 'stemming'.
-            deobfuscation(bool): optional, whether we do deobfuscation. True by default.
-            basing(bool): optional, controls whether we're doing lemmatization + stemming after text clearing.
-            True by default.
+
+            text(str): text should be prepared
+            word_basing_method(str): which method of word basing we should use. Should be 'lemmatization' or 'stemming'
+            deobfuscation(bool): optional, whether we do deobfuscation. True by default
+            basing(bool): optional, controls whether we're doing lemmatization + stemming after text clearing
+            True by default
+            remove_redundant_symbols(bool) - should we remove 2 symbol strings and 1 symbol from
+            text
         Returns:
             list: str -  Words after preparing
         """
 
-        words = self.__raw_preparing(text)
+        words = self.__raw_preparing(text, remove_redundant_symbols)
         processed_words = []
         for item in words:
             deobfuscated = item
             processed = self.__delete_long_vowels(deobfuscated)
 
             if deobfuscation:  # If we do deobfuscation
-                processed = self.__deobfuscate(item)
+                processed = self.__deobfuscate(processed)
 
             cleared = self.__get_letters_only(processed)
             cleared = list(cleared)
@@ -80,20 +86,6 @@ class TextPreparation:
             processed_words.append(done_word)
 
         return processed_words
-
-    def __has_adjacent(self, chars: list, index) -> bool:
-        has_right_vowel = False
-        has_left_vowel = False
-
-        if index > 0:
-            if chars[index - 1].isalpha():
-                has_left_vowel = True
-
-        if index < len(chars) - 1:
-            if chars[index + 1].isalpha():
-                has_right_vowel = True
-
-        return has_left_vowel and has_right_vowel
 
     def __deobfuscate(self, word: str) -> str:
         """
@@ -116,7 +108,6 @@ class TextPreparation:
         for i in range(len(chars)):
             if chars[i] in deobfuscation_table_single.keys():
                 if len(deobfuscation_table_single[chars[i]]) == 1:
-
                     value = deobfuscation_table_single[chars[i]][0]
 
                     if self.__has_adjacent(chars, i):
@@ -130,11 +121,11 @@ class TextPreparation:
 
                     if self.__has_adjacent(chars, i):
                         candidate = self.__find_best_n_gram(
-                            ''.join(word), values, i)
+                            ''.join(chars), values, i)
                         if candidate:
-                            word[i] = word[i].replace(word[i], candidate)
+                            chars[i] = chars[i].replace(chars[i], candidate)
 
-        word = ''.join(word)
+        word = ''.join(chars)
 
         return word
 
@@ -151,7 +142,6 @@ class TextPreparation:
         best_candidate = None
         best_length = 0
         min_count = float('inf')
-        l = r = position
 
         for candidate in candidates:
             for l in range(position + 1):
@@ -172,7 +162,23 @@ class TextPreparation:
 
         return best_candidate
 
-    def __raw_preparing(self, text: str) -> list[str]:
+    @staticmethod
+    def __has_adjacent(chars: list, index) -> bool:
+        has_right_vowel = False
+        has_left_vowel = False
+
+        if index > 0:
+            if chars[index - 1].isalpha():
+                has_left_vowel = True
+
+        if index < len(chars) - 1:
+            if chars[index + 1].isalpha():
+                has_right_vowel = True
+
+        return has_left_vowel or has_right_vowel
+
+    @staticmethod
+    def __raw_preparing(text: str, remove_redundant_symbols) -> list[str]:
         """
         Doing raw string preparing. Deletes url's, replaces letters, lowercasing all and splitting given text by spaces.
 
@@ -206,7 +212,6 @@ class TextPreparation:
                 r'\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])'
             )
         }
-        print(text)
         text = patterns['whitespace'].sub(' ', text)
         text = patterns['line_breaks'].sub(' ', text)
         text = patterns['urls'].sub('', text)
@@ -226,17 +231,21 @@ class TextPreparation:
 
         text = text.lower()
         text = text.split()
+        raw_prepared = []
+        for item in text:
+            if len(item) > 2:
+                raw_prepared.append(item)
 
-        return text
+        return raw_prepared
 
     def __get_base_form(self, word: str,
                         word_basing_method: str = 'lemmatization') -> str:
-        '''
+        """
         Returning base form for word with method based on word_basing_method param.
 
         Returns:
             str: Base form for word.
-        '''
+        """
 
         if word_basing_method == 'lemmatization':
 
@@ -250,20 +259,22 @@ class TextPreparation:
 
             return word
 
-    def __delete_long_vowels(self, text: str) -> str:
-        '''
+    @staticmethod
+    def __delete_long_vowels(text: str) -> str:
+        """
         Handling 3 and more same letters in a row.
 
         Returns:
             str: Text with no more 3 same letter.
-        '''
+        """
 
         pattern = re.compile(r'(.)\1{2,}')
         new_text = pattern.sub(r'\1', text)
 
         return new_text
 
-    def __get_letters_only(self, word: str) -> str:
+    @staticmethod
+    def __get_letters_only(word: str) -> str:
         '''
         Selects only letters from given word.
 

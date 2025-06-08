@@ -31,6 +31,7 @@ def select_from_table(statement: Select,
                 statement = statement.limit(limit)
             if where_clauses:
                 statement = statement.where(*where_clauses)
+                print(statement)
             res = ss.execute(statement).fetchall()
             for item in res:
                 row = {}
@@ -44,7 +45,5 @@ def select_from_table(statement: Select,
         except Exception as e:
             print(f'Error during selecting from table by statement {statement}, {str(e)}')
             raise
-
-        ss.close()
 
     return rows

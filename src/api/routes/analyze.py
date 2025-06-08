@@ -1,10 +1,14 @@
+from sqlalchemy import or_
 from fastapi import (APIRouter, Query, Request, HTTPException)
 from db.utils import select_from_table
-from db.utils import select_from_answers, select_from_model_answers
+from db.utils.statemenents import select_from_answers, select_from_model_answers
 from db.db_models.pydantic import AnswerPost
 from src.utils.post_learn.splitter import split
+from db.db_models.sqlalchemy.text import Text
+
 
 router = APIRouter(prefix='/analyze', tags=['profanity'])
+
 
 @router.get('/', status_code=200)
 def analyze_text_get(request: Request,
@@ -40,10 +44,10 @@ def analyze_text_get(request: Request,
 
 @router.get('/model_answers/')
 def get_model_answers_table(skip: int = Query(default=0,
-                                        description='How much rows in table '
-                                                    'we should skip'),
+                                              description='How much rows in table '
+                                                          'we should skip'),
                             limit: int = Query(default=20,
-                                        description='How much rows we want to get')):
+                                               description='How much rows we want to get')):
     '''
     Returns rows of model answers starts from skip+1 row and ends in
     skip+offset row.
@@ -77,7 +81,7 @@ def get_answers_table(skip: int = Query(default=0,
                                         description='How much rows in table '
                                                     'we should skip'),
                       limit: int = Query(default=20,
-                                        description='How much rows we want to get')):
+                                         description='How much rows we want to get')):
     """
     Returns rows of answers starts from skip+1 row and ends in skip+offset row.
     Parameters:
@@ -102,6 +106,7 @@ def get_answers_table(skip: int = Query(default=0,
         'rows': result
     }
 
+
 @router.post('/upload_answers/', status_code=200)
 def load_new_answers(request: Request,
                      answers: AnswerPost,
@@ -112,20 +117,29 @@ def load_new_answers(request: Request,
         request: Request
         answers: edited rows with actual answers
         threshold: threshold by exceeding which label if classification will be 1
-
-    Returns:
-
     """
 
     profanity_module = request.app.state.profanity_module
     semantic_module = request.app.state.semantic_module
     text_analyzer = request.app.state.analyzer
     profane_rows, semantic_rows = split(answers.rows)
-    print(profane_rows, semantic_rows)
-    if profane_rows:
-        profanity_module.post_learn(profanity_rows=profane_rows, threshold = threshold)
-    if semantic_rows:
-        semantic_module.post_learn(semantic_rows = semantic_rows,
-                                   text_analyzer = text_analyzer,
-                                   threshold=threshold)
+    try:
+        if profane_rows:
+            profanity_module.post_learn(profanity_rows=profane_rows,
+                                        text_analyzer=text_analyzer,
+                                        threshold=threshold)
+        if semantic_rows:
+            semantic_module.post_learn(semantic_rows=semantic_rows,
+                                       text_analyzer=text_analyzer,
+                                       threshold=threshold)
 
+        where_clauses = [or_(*[Text.id == item['id'] for item in answers.rows])]
+
+        result = select_from_table(select_from_answers, where_clauses=where_clauses)
+        return { 'updated_rows': result }
+
+
+    except Exception as e:
+        print(f'Error during-post learning: {str(e)}')
+        raise HTTPException(status_code=500,
+                            detail=f'Error during-post learning: {str(e)}')

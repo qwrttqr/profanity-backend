@@ -49,17 +49,13 @@ class TextAnalyzer:
         """
         try:
             predictions = self.__get_predict(input_text)
-            preds = [0 if prob <
-                          threshold else 1 for prob in predictions]
 
-            return int(any(pred for pred in preds))
+            return int(any(prediction >= threshold for prediction in predictions))
         except:
             raise Exception('Error during profaity analysis')
 
-    def predict_proba_profanity(self, input_text: str) -> list[int]:
-        predictions = self.__get_predict(input_text)
-
-        return predictions
+    def predict_proba_profanity(self, input_text: str) -> float:
+        return self.__get_predict(input_text)
 
     def analyze(self, text: str, threshold) -> dict[
         str, dict | int]:
@@ -75,12 +71,12 @@ class TextAnalyzer:
             information: dict[str, dict | int]
         """
         text_before_processing = text
-        text_after = ' '.join(
+        text_after_for_semantic = ' '.join(
             self.__text_preparator.prepare_text(text,
                                                 basing=False))
-        text_after_processing = text_after
-        text_labels = self.__analyze_toxicity(text_after, threshold)
-        profanity_label = self.predict_profanity(text_after)
+
+        text_labels = self.__analyze_toxicity(text_after_for_semantic, threshold)
+        profanity_label = self.predict_profanity(text, threshold)
 
         labels = {
             'text_labels': text_labels,
@@ -90,15 +86,20 @@ class TextAnalyzer:
         profanity_class = labels['profanity_label']
 
         collect_information(text_before_processing,
-                            text_after_processing,
+                            text_after_for_semantic,
                             semantic_classes=analyzer_classes,
                             profanity_class=profanity_class)
 
         return labels
 
-    def update(self):
+    def update_profanity(self):
         self.__model_profanity = self.__profanity_module.get_model()
         self.__vectorizer = self.__profanity_module.get_vectorizer()
+
+    def update_semantic(self):
+        self.__semantic_tokenizer = self.__semantic_module.get_tokenizer()
+        self.__semantic_model = self.__semantic_module.get_model()
+        new = self.__semantic_model
 
     def get_semantic_labels(self, text: str, threshold: float,
                             return_classes: bool = True) -> list[int]:
@@ -146,11 +147,10 @@ class TextAnalyzer:
 
         return text_labels
 
-    def __get_predict(self, input_text) -> list[int]:
-        input_text = self.__text_preparator.prepare_text(
-            input_text, word_basing_method='stemming')
-
-        vec_text = self.__vectorizer.transform(input_text)
-        probabilities = self.__model_profanity.predict_proba(vec_text)[:, 1]
-
-        return probabilities
+    def __get_predict(self, input_text):
+        processed_text = self.__text_preparator.prepare_text(
+                    input_text, word_basing_method='stemming')
+        print(processed_text)
+        vec_text = self.__vectorizer.transform(processed_text)
+        print(self.__model_profanity.predict_proba(vec_text)[:, 1])
+        return self.__model_profanity.predict_proba(vec_text)[:, 1]

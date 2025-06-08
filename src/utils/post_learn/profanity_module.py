@@ -11,6 +11,7 @@ from sklearn.svm import LinearSVC
 from sklearn.metrics import classification_report
 from sklearn.calibration import CalibratedClassifierCV
 from src.utils.text_prepar import TextPreparation
+from src.utils.text_analyzer import TextAnalyzer
 from db.utils.update_table import get_id, update_table
 from db.utils.statemenents import update_profanity_id
 from src.utils.load import profanity_path
@@ -33,8 +34,7 @@ class ProfanityModule:
                                  'models.joblib')
 
             self.__vectorizer_path = profanity_path / \
-            f'ver{self.__profanity_model_ver}' / 'vectorizer.joblib'
-
+                                     f'ver{self.__profanity_model_ver}' / 'vectorizer.joblib'
 
             self.__model = load_file(self.__model_path,
                                      joblib.load, 'rb',
@@ -61,17 +61,16 @@ class ProfanityModule:
     def __notify(self):
         for item in self.__observers:
             try:
-                item.update()
+                item.update_profanity()
             except Exception as e:
                 print('Error during observer notifying', e)
                 raise Exception('Error during observer notifying')
 
     def __prepare_word(self, elem: str) -> list[str]:
         return self.__text_prepar.prepare_text(elem,
-                                               word_basing_method='stemming',
-                                               deobfuscation=False)
+                                               word_basing_method='stemming')
 
-    def __prepare_data(self, profanity_rows: list[dict[str, int | str | dict]]):
+    def __prepare_data(self, profanity_rows: list[dict[str, int | str | dict]]) -> pd.DataFrame:
         """
         Creates dataframe based on currently known data and new data
         Args:
@@ -82,39 +81,61 @@ class ProfanityModule:
 
         """
         rows = select_from_table(statement=select_from_model_answers_for_profanity)
-        data = {
-            'text': [],
-            'profanity_class': []
-        }
-
+        data = {}
+        # Last key in frame
+        last_key = 0
         for item in rows:
             prepared_row = self.__prepare_word(item['text_after_processing'])
-            data['text'].append(' '.join(prepared_row))
-            data['profanity_class'].append(item['profanity_class'])
+            data[item['id']] = {
+                'text': ' '.join(prepared_row),
+                'profanity_class': item['profanity_class']
+            }
+            last_key = max(item['id'], last_key)
 
-        for item in profanity_rows:
-            for elem in item['meta']['words']:
-                prepared_elem = self.__prepare_word(elem)
-                data['text'].append(' '.join(prepared_elem))
-                data['profanity_class'].append(item['profanity_class'])
+        for row in profanity_rows:
+            if row['profanity_class'] == 1:
+                data[row['id']]['profanity_class'] = row['profanity_class']
+                for word in row['meta']['words']:
+                    last_key += 1
+                    processed_word = self.__prepare_word(word)[0]
+                    data[last_key] = {
+                        'text': processed_word,
+                        'profanity_class': row['profanity_class']
+                    }
+            else:
+                data[row['id']]['profanity_class'] = row['profanity_class']
 
-        return pd.DataFrame(data)
+        cleaned_data = []
+        for value in data.values():
+            row = {
+                'text': value['text'],
+                'profanity_class': value['profanity_class']
+            }
+            cleaned_data.append(row)
+        df = pd.DataFrame(cleaned_data)
 
-    def post_learn(self, profanity_rows, threshold: float = 0.5):
+        return df
+
+    def post_learn(self, profanity_rows, text_analyzer: TextAnalyzer,
+                   threshold: float = 0.5):
         """
-        Train a profanity classification model with calibrated probabilities
+        Train a profanity classification model with calibrated probabilities.
 
-        Returns:
-
+        When we got rows with data we are building a dataset by following rules:
+        If profanity changed from 0 to 1 -> add profane word into the dataset with 1 label
+        Otherwise mark the text as not containing profane words
         """
         dataframe = self.__prepare_data(profanity_rows)
-
         rows = []
         for item in profanity_rows:
+            text_to_process = item['text_after_processing']
+
+            prepared_phrase = self.__prepare_word(text_to_process)
+
             rows.append({
-                'id' : item['id'],
-                'phrase': self.__prepare_word(' '.join(item['meta']['words']))
-        })
+                'id': item['id'],
+                'phrase': ' '.join(prepared_phrase)
+            })
 
         X, y = dataframe.text, dataframe.profanity_class
         X_train, X_test, y_train, y_test = train_test_split(
@@ -170,23 +191,18 @@ class ProfanityModule:
                              'models.joblib')
 
         self.__vectorizer_path = (profanity_path / f'ver{self.__profanity_model_ver}' /
-                             'vectorizer.joblib')
+                                  'vectorizer.joblib')
 
         joblib.dump(self.__model, self.__model_path)
         joblib.dump(self.__vectorizer, self.__vectorizer_path)
 
         save_profanity_ver(self.__profanity_model_ver)
 
+        self.__notify()
+
         for item in rows:
-            vectorized = self.__vectorizer.transform(item['phrase'])
-            prediction = self.__model.predict_proba(vectorized)[:, 1]
-            class_ = 1 if prediction >= threshold else 0
+            class_ = text_analyzer.predict_profanity(item['phrase'])
             profanity_id = get_id(table_type='profanity_table', profanity_class=class_)
-            update_table(update_profanity_id,where ={'id': item['id']},
+            update_table(update_profanity_id, where={'id': item['id']},
                          values={'profanity_id': profanity_id})
 
-        try:
-            self.__notify()
-        except Exception as e:
-            print(f'Error during profanity post-learning: {str(e)}')
-            raise Exception(f'Error during profanity post-learning: {str(e)}')
