@@ -47,14 +47,14 @@ class TextPreparation:
         """
         Prepares the text.
 
-        Parameters:
-
-            text(str): text should be prepared
-            word_basing_method(str): which method of word basing we should use. Should be 'lemmatization' or 'stemming'
-            deobfuscation(bool): optional, whether we do deobfuscation. True by default
-            basing(bool): optional, controls whether we're doing lemmatization + stemming after text clearing
-            True by default
-            remove_redundant_symbols(bool) - should we remove 2 symbol strings and 1 symbol from
+        Args:
+            text: str - text should be prepared
+            word_basing_method: str - which method of word basing we should use. Should be
+            'lemmatization' or 'stemming'
+            deobfuscation: bool - optional, whether we do deobfuscation. True by default
+            basing: bool - optional, controls whether we're doing lemmatization + stemming after
+            text clearing. True by default
+            remove_redundant_symbols: bool - should we remove 2 symbol strings and 1 symbol from
             text
         Returns:
             list: str -  Words after preparing
@@ -265,7 +265,7 @@ class TextPreparation:
         Handling 3 and more same letters in a row.
 
         Returns:
-            str: Text with no more 3 same letter.
+            new_text: str - Text with no more 3 same letter.
         """
 
         pattern = re.compile(r'(.)\1{2,}')
@@ -279,6 +279,6 @@ class TextPreparation:
         Selects only letters from given word.
 
         Returns:
-            str: Word only with letters.
+            new_text: str - Word only with letters.
         '''
         return re.sub(r'[^а-яё]', '', word)

@@ -14,7 +14,7 @@ def table_collisions(table: ProfanityClasses | SemanticClasses | Answer,
         table: SQLAlchemy table type
         data: Object constructed from SQLAlchemy table type
     Returns:
-        id: (int | None) - if id exist returns it otherwise returns None
+        id: int | None - if id exist returns it otherwise returns None
     """
     LocalSession = get_session()
 

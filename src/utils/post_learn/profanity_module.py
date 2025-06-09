@@ -31,7 +31,7 @@ class ProfanityModule:
             self.__profanity_model_ver = get_profanity_ver()
 
             self.__model_path = (profanity_path / f'ver{self.__profanity_model_ver}' /
-                                 'models.joblib')
+                                 'model.joblib')
 
             self.__vectorizer_path = profanity_path / \
                                      f'ver{self.__profanity_model_ver}' / 'vectorizer.joblib'
@@ -72,13 +72,11 @@ class ProfanityModule:
 
     def __prepare_data(self, profanity_rows: list[dict[str, int | str | dict]]) -> pd.DataFrame:
         """
-        Creates dataframe based on currently known data and new data
+        Creates dataframe based on currently known data and new data.
         Args:
             profanity_rows: list[dict[str, int | str]] - array of new data
-
         Returns:
-            dataframe: pandas.DataFrame - dataframe with 2 columns
-
+            dataframe: pandas.DataFrame - dataframe with 2 columns(text & class)
         """
         rows = select_from_table(statement=select_from_model_answers_for_profanity)
         data = {}
@@ -188,7 +186,7 @@ class ProfanityModule:
         os.makedirs(profanity_path / f'ver{self.__profanity_model_ver}')
 
         self.__model_path = (profanity_path / f'ver{self.__profanity_model_ver}' /
-                             'models.joblib')
+                             'model.joblib')
 
         self.__vectorizer_path = (profanity_path / f'ver{self.__profanity_model_ver}' /
                                   'vectorizer.joblib')

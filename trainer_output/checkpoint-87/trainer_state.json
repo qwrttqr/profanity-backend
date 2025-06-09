@@ -1,6 +1,6 @@
 {
   "best_global_step": 87,
-  "best_metric": 0.9999462365591398,
+  "best_metric": 0.9981854305284716,
   "best_model_checkpoint": "trainer_output\\checkpoint-87",
   "epoch": 1.0,
   "eval_steps": 500,
@@ -11,13 +11,13 @@
   "log_history": [
     {
       "epoch": 1.0,
-      "eval_accuracy": 0.9675324675324676,
-      "eval_f1": 0.9874059541974647,
-      "eval_loss": 0.01836855337023735,
-      "eval_roc_auc": 0.9999462365591398,
-      "eval_runtime": 1.2547,
-      "eval_samples_per_second": 122.738,
-      "eval_steps_per_second": 15.94,
+      "eval_accuracy": 0.9161290322580645,
+      "eval_f1": 0.9698534798534798,
+      "eval_loss": 0.05071928724646568,
+      "eval_roc_auc": 0.9981854305284716,
+      "eval_runtime": 0.6256,
+      "eval_samples_per_second": 247.781,
+      "eval_steps_per_second": 31.972,
       "step": 87
     }
   ],
@@ -38,7 +38,7 @@
       "attributes": {}
     }
   },
-  "total_flos": 2545096596480.0,
+  "total_flos": 2561695052544.0,
   "train_batch_size": 16,
   "trial_name": null,
   "trial_params": null

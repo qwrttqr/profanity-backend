@@ -85,11 +85,11 @@ def get_answers_table(skip: int = Query(default=0,
     """
     Returns rows of answers starts from skip+1 row and ends in skip+offset row.
     Parameters:
-        skip : int - how much rows to skip.
-        limit : int - how much rows we want to get.
+        skip: int - how much rows to skip.
+        limit: int - how much rows we want to get.
     Returns:
-        'table_headers': list - headers of the table
-        'rows': list - list of array rows
+        table_headers: list - headers of the table
+        rows: list - list of array rows
     """
     table_headers = ['Текст до подготовки',
                      'Текст после подготовки',
@@ -112,11 +112,13 @@ def load_new_answers(request: Request,
                      answers: AnswerPost,
                      threshold: float = 0.5):
     """
-
+    Accepts list of rows with data for post-learning.
     Args:
-        request: Request
-        answers: edited rows with actual answers
-        threshold: threshold by exceeding which label if classification will be 1
+        request: Request object
+        answers: list - edited rows with actual answers
+        threshold: float(optional) - threshold by exceeding which label in classification will be 1
+    Returns:
+        updated rows: list - list of rows that was processed by new model instances
     """
 
     profanity_module = request.app.state.profanity_module
@@ -140,6 +142,6 @@ def load_new_answers(request: Request,
 
 
     except Exception as e:
-        print(f'Error during-post learning: {str(e)}')
+        print(f'Error during post-learning: {str(e)}')
         raise HTTPException(status_code=500,
-                            detail=f'Error during-post learning: {str(e)}')
+                            detail=f'Error during post-learning: {str(e)}')

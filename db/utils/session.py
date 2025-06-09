@@ -4,7 +4,6 @@ from .init_db import get_db_engine
 
 def get_session() -> Session:
     """
-
     Returns:
         Session: Session - fabric for creating new sessions
     """

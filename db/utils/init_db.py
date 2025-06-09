@@ -10,7 +10,7 @@ db_engine: Engine | None = None
 def connect_db():
     """
     Returns:
-        db engine : Engine - database engine
+        db engine: Engine - database engine
     """
     dotenv.load_dotenv()
     database_username = os.environ.get('DB_USERNAME')
@@ -29,10 +29,10 @@ def connect_db():
             raise DatabaseError('Error connection to db')
 
 def get_db_engine() -> Engine:
-    '''
+    """
     Returns:
-        db engine : Engine - database engine
-    '''
+        db engine: Engine - database engine
+    """
     if db_engine is None:
         connect_db()
 

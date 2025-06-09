@@ -66,14 +66,13 @@ class SemanticModule:
                        text_analyzer,
                        threshold: float):
         """
-        Creates dataframe based on currently known data and new data
+        Creates dataframe based on currently known data and new data.
         Args:
             semantic_rows: list[dict[str, int | str]] - array of new data
             text_analyzer: TextAnalyzer class that implement get_labels function
             threshold: float - threshold for labeling
         Returns:
-            dataframe: pandas.DataFrame - dataframe with 2 columns
-
+            dataframe: pandas.DataFrame - dataframe with 2 columns(text & class)
         """
         rows = select_from_table(statement=select_from_model_answers_for_semantic)
         data = {}
@@ -150,6 +149,7 @@ class SemanticModule:
             logits, labels = pred
             probs = torch.sigmoid(torch.tensor(logits)).numpy()
             preds = (probs >= 0.5).astype(int)
+
             global use_auc
 
             try:
@@ -157,7 +157,7 @@ class SemanticModule:
             except:
                 print('Cannot use auc_roc, using F1 instead')
                 auc = None
-
+            print(auc)
             acc = accuracy_score(labels, preds)
             f1 = f1_score(labels, preds, average='macro')
             if auc is None:
@@ -174,6 +174,7 @@ class SemanticModule:
                 }
 
         if use_auc:
+            print('using auc')
             training_args = TrainingArguments(
                 eval_strategy="epoch",
                 learning_rate=1e-5,
@@ -182,7 +183,7 @@ class SemanticModule:
                 weight_decay=0.01,
                 save_strategy="epoch",
                 load_best_model_at_end=True,
-                metric_for_best_model="roc_auc",
+                metric_for_best_model="eval_roc_auc",
                 report_to="none"
             )
         else:
@@ -194,7 +195,7 @@ class SemanticModule:
                 weight_decay=0.01,
                 save_strategy="epoch",
                 load_best_model_at_end=True,
-                metric_for_best_model="f1",
+                metric_for_best_model="eval_f1",
                 greater_is_better=True,
                 report_to="none"
             )

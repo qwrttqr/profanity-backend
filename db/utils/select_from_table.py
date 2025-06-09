@@ -13,10 +13,10 @@ def select_from_table(statement: Select,
     Executes a generic SELECT statement with optional WHERE, ORDER BY, SKIP, LIMIT.
 
     Args:
-        statement (Select): Base SQLAlchemy Select object
-        where_clauses (list): List of SQLAlchemy filter expressions (e.g., User.age > 30)
-        skip (int): Number of records to skip
-        limit (int): Max number of records to return
+        statement: Select - Base SQLAlchemy Select object
+        where_clauses: list - List of SQLAlchemy filter expressions (e.g., User.age > 30)
+        skip: int -  Number of records to skip
+        limit: int -  Max number of records to return
 
     Returns:
         list[dict]: List of rows as dictionaries, date fields are ISO formatted

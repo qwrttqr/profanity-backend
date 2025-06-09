@@ -1,11 +1,10 @@
 def split(rows):
     """
-    Split rows based on which fields are changed
+    Split rows based on which fields are changed.
     Args:
         rows: list[dict] - rows that should be split
-
     Returns:
-        tuple[list,llist] - profanity and semantic changes array
+        tuple[list,list] - profanity and semantic changes array
     """
     profanity_arr = []
     semantic_arr = []
