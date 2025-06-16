@@ -174,10 +174,8 @@ cython_debug/
 .pypirc
 
 .vscode
-
-# Special files and dirs
+# Special files
 n_grams.json
 ipynb_checkpoints/
 models/
 trainer_output/
-test.csv
