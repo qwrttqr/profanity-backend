@@ -275,10 +275,10 @@ class TextPreparation:
 
     @staticmethod
     def __get_letters_only(word: str) -> str:
-        '''
+        """
         Selects only letters from given word.
 
         Returns:
             new_text: str - Word only with letters.
-        '''
+        """
         return re.sub(r'[^а-яё]', '', word)
