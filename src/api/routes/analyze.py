@@ -103,7 +103,7 @@ def load_new_answers(request: Request,
 
         where_clauses = [or_(*[Text.id == item['id'] for item in answers.rows])]
 
-        result = select_from_table(select_from_answers, where_clauses=where_clauses)
+        result = select_from_table(select_table, where_clauses=where_clauses)
         return { 'updated_rows': result }
 
 
