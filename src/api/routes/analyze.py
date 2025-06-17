@@ -1,7 +1,7 @@
 from sqlalchemy import or_
 from fastapi import (APIRouter, Query, Request, HTTPException)
 from db.utils import select_from_table
-from db.utils.statemenents import select_from_answers, select_from_model_answers
+from db.utils.statemenents import select_table
 from db.db_models.pydantic import AnswerPost
 from src.utils.post_learn.splitter import split
 from db.db_models.sqlalchemy.text import Text
@@ -42,13 +42,13 @@ def analyze_text_get(request: Request,
                             detail=f'Invalid input or analysis error: {str(e)}')
 
 
-@router.get('/model_answers/')
+@router.get('/table')
 def get_model_answers_table(skip: int = Query(default=0,
                                               description='How much rows in table '
                                                           'we should skip'),
                             limit: int = Query(default=20,
                                                description='How much rows we want to get')):
-    '''
+    """
     Returns rows of model answers starts from skip+1 row and ends in
     skip+offset row.
     Parameters:
@@ -57,57 +57,23 @@ def get_model_answers_table(skip: int = Query(default=0,
     Returns:
         'table_headers': list - headers of the table
         'rows': list - list of array rows
-    '''
-    table_headers = ['Текст до подготовки',
-                     'Текст после подготовки',
+    """
+    result = select_from_table(select_table, skip, limit)
+    table_headers = ['Текст до',
+                     'Текст после',
                      'Дата обработки',
-                     'Дата обновления',
+                     'Дата обновления классов',
                      'Содержит маты',
                      'Токсичное',
                      'Содержит оскорбления',
                      'Содержит угрозы',
-                     'Содержит репутационный риск для отправителя']
-
-    result = select_from_table(select_from_model_answers, skip, limit)
-
+                     'Содержит репутационный риск для автора']
     return {
-        'table_headers': table_headers,
-        'rows': result
+        'rows': result,
+        'headers' : table_headers
     }
 
-
-@router.get('/answers/')
-def get_answers_table(skip: int = Query(default=0,
-                                        description='How much rows in table '
-                                                    'we should skip'),
-                      limit: int = Query(default=20,
-                                         description='How much rows we want to get')):
-    """
-    Returns rows of answers starts from skip+1 row and ends in skip+offset row.
-    Parameters:
-        skip: int - how much rows to skip.
-        limit: int - how much rows we want to get.
-    Returns:
-        table_headers: list - headers of the table
-        rows: list - list of array rows
-    """
-    table_headers = ['Текст до подготовки',
-                     'Текст после подготовки',
-                     'Содержит маты',
-                     'Токсичное',
-                     'Содержит оскорбления',
-                     'Содержит угрозы',
-                     'Содержит репутационный риск для отправителя']
-
-    result = select_from_table(select_from_answers, skip, limit)
-
-    return {
-        'table_headers': table_headers,
-        'rows': result
-    }
-
-
-@router.post('/upload_answers/', status_code=200)
+@router.post('/upload_answers', status_code=200)
 def load_new_answers(request: Request,
                      answers: AnswerPost,
                      threshold: float = 0.5):
