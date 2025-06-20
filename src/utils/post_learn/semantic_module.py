@@ -14,7 +14,6 @@ from sklearn.metrics import roc_auc_score, accuracy_score, f1_score
 from db.utils.update_table import get_id, update_table
 
 
-
 class SemanticModule:
     SemanticModuleInstance = None
 
@@ -132,7 +131,7 @@ class SemanticModule:
             })
 
         dataset = Dataset.from_pandas(dataframe)
-        dataset = dataset.shuffle(seed=42)
+        dataset = dataset.shuffle()
 
         train_test_split = dataset.train_test_split(test_size=0.1)
         train_dataset = train_test_split['train']
@@ -144,24 +143,31 @@ class SemanticModule:
 
         tokenized_train = train_dataset.map(tokenize_function, batched=True)
         tokenized_eval = eval_dataset.map(tokenize_function, batched=True)
-        use_auc = True
+
+        def should_use_auc():
+            for item in dataset:
+                if all(label == 1 for label in item['labels']) or all(label == 0 for label in item[
+                    'labels']):
+                    return False
+                    break
+            return True
+
         def compute_metrics(pred):
             logits, labels = pred
             probs = torch.sigmoid(torch.tensor(logits)).numpy()
             preds = (probs >= 0.5).astype(int)
+            use_auc = should_use_auc()
 
-            global use_auc
-
-            try:
+            if use_auc:
                 auc = roc_auc_score(labels, probs, multi_class='ovr', average='macro')
-            except:
+            else:
                 print('Cannot use auc_roc, using F1 instead')
                 auc = None
-            print(auc)
+
             acc = accuracy_score(labels, preds)
             f1 = f1_score(labels, preds, average='macro')
+
             if auc is None:
-                use_auc = False
                 return {
                     'accuracy': acc,
                     'f1': f1
@@ -173,8 +179,7 @@ class SemanticModule:
                     'f1': f1
                 }
 
-        if use_auc:
-            print('using auc')
+        if should_use_auc():
             training_args = TrainingArguments(
                 eval_strategy="epoch",
                 learning_rate=1e-5,
@@ -252,7 +257,5 @@ class SemanticModule:
             semantic_id = get_id(table_type='semantic_table',
                                  semantic_classes=text_labels)
 
-            update_table(update_semantic_id,where ={'id': item['id']},
+            update_table(update_semantic_id, where={'id': item['id']},
                          values={'semantic_id': semantic_id})
-
-
