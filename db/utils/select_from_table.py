@@ -1,7 +1,4 @@
 import datetime
-
-from dawg_python.units import offset
-
 from db.utils import get_session
 from sqlalchemy import Select
 
@@ -21,7 +18,6 @@ def select_from_table(statement: Select,
     Returns:
         list[dict]: List of rows as dictionaries, date fields are ISO formatted
     """
-    print(skip, limit, where_clauses)
     LocalSession = get_session()
     rows = []
     with LocalSession() as ss:

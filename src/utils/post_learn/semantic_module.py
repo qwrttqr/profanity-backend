@@ -148,8 +148,10 @@ class SemanticModule:
             for item in dataset:
                 if all(label == 1 for label in item['labels']) or all(label == 0 for label in item[
                     'labels']):
+
                     return False
                     break
+
             return True
 
         def compute_metrics(pred):

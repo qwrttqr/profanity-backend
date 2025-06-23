@@ -32,11 +32,11 @@ class Text(Base):
         back_populates='texts')
 
     def __repr__(self) -> str:
-
-        return f'Text(id={self.id!r}, \
+        return (f'Text(id={self.id!r}, \
                     semantic_id={self.semantic_id!r}, \
                     profanity_id={self.profanity_id!r}, \
                     answers_id={self.answers_id!r}, \
                     text_before_processing={self.text_before_processing!r}, \
                     text_after_processing={self.text_after_processing!r}, \
-                    created_at={self.creation_date!r})'
+                    created_at={self.creation_date!r}), \
+                    profanity={self.profanity}')

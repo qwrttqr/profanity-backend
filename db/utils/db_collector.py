@@ -60,6 +60,7 @@ def collect_information(text_before: str,
                             semantic_id=semantic_id,
                             answers_id=answer_id,
                             creation_date=datetime.now())
+            print(text_obj)
             ss.add(text_obj)
             ss.commit()
         except Exception as e:

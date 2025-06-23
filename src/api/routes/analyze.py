@@ -5,7 +5,7 @@ from db.utils.statemenents import select_table
 from db.db_models.pydantic import AnswerPost
 from src.utils.post_learn.splitter import split
 from db.db_models.sqlalchemy.text import Text
-
+from db.utils import filter_rows
 
 router = APIRouter(prefix='/analyze', tags=['profanity'])
 
@@ -47,31 +47,61 @@ def get_model_answers_table(skip: int = Query(default=0,
                                               description='How much rows in table '
                                                           'we should skip'),
                             limit: int = Query(default=20,
-                                               description='How much rows we want to get')):
+                                               description='How much rows we want to get'),
+                            profanity_class: str = Query(default='all',
+                                                        description='Filter for profanity class field'),
+                            toxic_class: str = Query(default='all',
+                                                        description='Filter for toxic class field'),
+                            insult_class: str = Query(default='all',
+                                                         description='Filter for insult class field'),
+                            threat_class: str = Query(default='all',
+                                                         description='Filter for threat class field'),
+                            dangerous_class: str = Query(default='all',
+                                                         description='Filter for dangerous class field')):
     """
+
     Returns rows of model answers starts from skip+1 row and ends in
     skip+offset row.
     Parameters:
-        skip : int - how much rows to skip.
-        limit : int - how much rows we want to get.
+        dangerous_class: str - filter for dangerous class field
+        threat_class: str - filter for threat class field
+        insult_class: str - filter for insult class field
+        toxic_class: str - filter for toxic class field
+        profanity_class: str - filter for profanity class field
+        skip: int - how much rows to skip.
+        limit: int - how much rows we want to get.
     Returns:
         'table_headers': list - headers of the table
         'rows': list - list of array rows
     """
+    # where_clauses = [and_(*[Text[key].in_(filter_params[key]) for key in filter_params.keys()])]
+
     result = select_from_table(select_table, skip, limit)
-    table_headers = ['Текст до',
-                     'Текст после',
-                     'Дата обработки',
-                     'Дата обновления классов',
-                     'Содержит маты',
-                     'Токсичное',
-                     'Содержит оскорбления',
-                     'Содержит угрозы',
-                     'Содержит репутационный риск для автора']
+    result = filter_rows(result,profanity_class=profanity_class,
+                       toxic_class=toxic_class,
+                       insult_class=insult_class,
+                       threat_class=threat_class,
+                       dangerous_class=dangerous_class)
+    table_headers = [{'text': 'Текст до', 'filterable': False},
+                     {'text': 'Текст после', 'filterable': False},
+                     {'text': 'Дата обработки', 'filterable': False},
+                     {'text': 'Дата обновления классов', 'filterable': False},
+                     {'text': 'Содержит маты', 'filterable': True, 'key': 'profanity_class',
+                      'options': ['Все', 1, 0]},
+                     {'text': 'Токсичное', 'filterable': True, 'key': 'toxic_class',
+                      'options': ['Все', 1, 0]},
+                     {'text': 'Содержит оскорбления', 'filterable': True,
+                      'key': 'insult_class', 'options': ['Все', 1, 0]},
+                     {'text': 'Содержит угрозы', 'filterable': True, 'key': 'threat_class',
+                      'options': ['Все', 1, 0]},
+                     {'text': 'Содержит репутационный риск для отправителя', 'filterable': True,
+                      'key': 'dangerous_class', 'options': ['Все', 1, 0]}]
+
     return {
         'rows': result,
-        'headers' : table_headers
+        'headers': table_headers
     }
+
 
 @router.post('/upload_answers', status_code=200)
 def load_new_answers(request: Request,
@@ -91,6 +121,7 @@ def load_new_answers(request: Request,
     semantic_module = request.app.state.semantic_module
     text_analyzer = request.app.state.analyzer
     profane_rows, semantic_rows = split(answers.rows)
+
     try:
         if profane_rows:
             profanity_module.post_learn(profanity_rows=profane_rows,
@@ -104,7 +135,7 @@ def load_new_answers(request: Request,
         where_clauses = [or_(*[Text.id == item['id'] for item in answers.rows])]
 
         result = select_from_table(select_table, where_clauses=where_clauses)
-        return { 'updated_rows': result }
+        return {'updated_rows': result}
 
 
     except Exception as e:
