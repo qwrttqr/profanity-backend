@@ -84,11 +84,13 @@ class TextAnalyzer:
         }
         analyzer_classes = labels['text_labels']
         profanity_class = labels['profanity_label']
-
-        collect_information(text_before_processing,
+        try:
+            collect_information(text_before_processing,
                             text_after_for_semantic,
                             semantic_classes=analyzer_classes,
                             profanity_class=profanity_class)
+        except Exception as e:
+            raise Exception('Error commiting to db')
 
         return labels
 

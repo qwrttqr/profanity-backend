@@ -22,8 +22,7 @@ def collect_information(text_before: str,
 
     with LocalSession() as ss:
         try:
-            profanity_class_obj = ProfanityClasses(
-                profanity_class=profanity_class)
+            profanity_class_obj = ProfanityClasses(profanity_class=profanity_class)
             semantic_class_obj = SemanticClasses(
                 toxic_class=semantic_classes.get('toxic'),
                 insult_class=semantic_classes.get('insult'),
@@ -31,38 +30,40 @@ def collect_information(text_before: str,
                 dangerous_class=semantic_classes.get('dangerous'))
 
             answer_obj = Answer()
-
-            profanity_id = table_collisions(table=ProfanityClasses,
+            profanity_obj_coll = table_collisions(table=ProfanityClasses,
                                             data=profanity_class_obj)
-            if profanity_id is None:
+            semantic_obj_coll = table_collisions(table=SemanticClasses,
+                                            data=semantic_class_obj)
+            answer_obj_coll = table_collisions(table=Answer,
+                                         data=answer_obj)
+            if profanity_obj_coll is None:
+                profanity_obj_coll = profanity_class_obj
                 ss.add(profanity_class_obj)
                 ss.flush()
-                profanity_id = profanity_class_obj.id
 
-            semantic_id = table_collisions(table=SemanticClasses,
-                                           data=semantic_class_obj)
-            if semantic_id is None:
+            if semantic_obj_coll is None:
+                semantic_obj_coll = semantic_class_obj
                 ss.add(semantic_class_obj)
                 ss.flush()
-                semantic_id = semantic_class_obj.id
 
-            answer_id = table_collisions(table=Answer,
-                                         data=answer_obj)
 
-            if answer_id is None:
+            if answer_obj_coll is None:
+                answer_obj_coll = answer_obj
                 ss.add(answer_obj)
                 ss.flush()
-                answer_id = answer_obj.id
 
             text_obj = Text(text_before_processing=text_before,
                             text_after_processing=text_after,
-                            profanity_id=profanity_id,
-                            semantic_id=semantic_id,
-                            answers_id=answer_id,
-                            creation_date=datetime.now())
-            print(text_obj)
+                            profanity_id=profanity_obj_coll.id,
+                            semantic_id=semantic_obj_coll.id,
+                            answers_id=answer_obj_coll.id,
+                            creation_date=datetime.now(),
+                            profanity=profanity_obj_coll,
+                            semantic=semantic_obj_coll,
+                            answers=answer_obj_coll)
             ss.add(text_obj)
             ss.commit()
         except Exception as e:
             ss.rollback()
             print('Error commiting to db', e)
+            raise Exception('Error commiting to db')

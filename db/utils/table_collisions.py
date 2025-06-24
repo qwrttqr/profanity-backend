@@ -26,7 +26,7 @@ def table_collisions(table: ProfanityClasses | SemanticClasses | Answer,
             ss.close()
             if result:
 
-                return result.id
+                return result
             else:
 
                 return None
@@ -42,7 +42,7 @@ def table_collisions(table: ProfanityClasses | SemanticClasses | Answer,
             ss.close()
             if result:
 
-                return result.id
+                return result
             else:
 
                 return None
@@ -59,7 +59,7 @@ def table_collisions(table: ProfanityClasses | SemanticClasses | Answer,
 
             if result:
 
-                return result.id
+                return result
             else:
 
                 return None

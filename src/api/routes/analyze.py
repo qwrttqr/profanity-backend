@@ -74,6 +74,7 @@ def get_model_answers_table(skip: int = Query(default=0,
         'table_headers': list - headers of the table
         'rows': list - list of array rows
     """
+    profanity_claus = [Text.profanity.profanity_class.]
     # where_clauses = [and_(*[Text[key].in_(filter_params[key]) for key in filter_params.keys()])]
 
     result = select_from_table(select_table, skip, limit)
@@ -87,15 +88,15 @@ def get_model_answers_table(skip: int = Query(default=0,
                      {'text': 'Дата обработки', 'filterable': False},
                      {'text': 'Дата обновления классов', 'filterable': False},
                      {'text': 'Содержит маты', 'filterable': True, 'key': 'profanity_class',
-                      'options': ['Все', 1, 0]},
+                      'options': ['Все', '1', '0']},
                      {'text': 'Токсичное', 'filterable': True, 'key': 'toxic_class',
-                      'options': ['Все', 1, 0]},
+                      'options': ['Все', '1', '0']},
                      {'text': 'Содержит оскорбления', 'filterable': True,
-                      'key': 'insult_class', 'options': ['Все', 1, 0]},
+                      'key': 'insult_class', 'options': ['Все', '1', '0']},
                      {'text': 'Содержит угрозы', 'filterable': True, 'key': 'threat_class',
-                      'options': ['Все', 1, 0]},
+                      'options': ['Все', '1', '0']},
                      {'text': 'Содержит репутационный риск для отправителя', 'filterable': True,
-                      'key': 'dangerous_class', 'options': ['Все', 1, 0]}]
+                      'key': 'dangerous_class', 'options': ['Все', '1', '0']}]
 
     return {
         'rows': result,

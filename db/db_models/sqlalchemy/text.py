@@ -8,9 +8,9 @@ class Text(Base):
     __tablename__ = 'texts'
     id: Mapped[int] = mapped_column(primary_key=True,
                                     autoincrement=True)
-    text_before_processing: Mapped[str] = mapped_column(String(4000),
+    text_before_processing: Mapped[str] = mapped_column(String(50000),
                                                         nullable=False)
-    text_after_processing: Mapped[str] = mapped_column(String(4000),
+    text_after_processing: Mapped[str] = mapped_column(String(50000),
                                                        nullable=False)
     creation_date: Mapped[datetime] = mapped_column(DateTime,
                                                  default=datetime.now,
@@ -32,11 +32,16 @@ class Text(Base):
         back_populates='texts')
 
     def __repr__(self) -> str:
-        return (f'Text(id={self.id!r}, \
-                    semantic_id={self.semantic_id!r}, \
-                    profanity_id={self.profanity_id!r}, \
-                    answers_id={self.answers_id!r}, \
-                    text_before_processing={self.text_before_processing!r}, \
-                    text_after_processing={self.text_after_processing!r}, \
-                    created_at={self.creation_date!r}), \
-                    profanity={self.profanity}')
+        return (
+            f"Text(id={self.id!r}, "
+            f"text_before_processing={self.text_before_processing!r}, "
+            f"text_after_processing={self.text_after_processing!r}, "
+            f"creation_date={self.creation_date!r}, "
+            f"updation_date={self.updation_date!r}, "
+            f"semantic_id={self.semantic_id!r}, "
+            f"answers_id={self.answers_id!r}, "
+            f"profanity_id={self.profanity_id!r}, "
+            f"profanity={self.profanity!r}, "
+            f"answers={self.answers!r}, "
+            f"semantic={self.semantic!r})"
+        )

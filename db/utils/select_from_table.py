@@ -22,12 +22,12 @@ def select_from_table(statement: Select,
     rows = []
     with LocalSession() as ss:
         try:
+            if where_clauses:
+                statement = statement.where(*where_clauses)
             if skip > -1:
                 statement = statement.offset(skip)
             if limit > -1:
                 statement = statement.limit(limit)
-            if where_clauses:
-                statement = statement.where(*where_clauses)
             res = ss.execute(statement).fetchall()
             for item in res:
                 row = {}
