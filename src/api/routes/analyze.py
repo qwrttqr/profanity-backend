@@ -5,7 +5,7 @@ from db.utils.statemenents import select_table
 from db.db_models.pydantic import AnswerPost
 from src.utils.post_learn.splitter import split
 from db.db_models.sqlalchemy.text import Text
-from db.utils import filter_rows
+from db.utils import build_where_clauses
 
 router = APIRouter(prefix='/analyze', tags=['profanity'])
 
@@ -74,15 +74,13 @@ def get_model_answers_table(skip: int = Query(default=0,
         'table_headers': list - headers of the table
         'rows': list - list of array rows
     """
-    profanity_claus = [Text.profanity.profanity_class.]
-    # where_clauses = [and_(*[Text[key].in_(filter_params[key]) for key in filter_params.keys()])]
 
-    result = select_from_table(select_table, skip, limit)
-    result = filter_rows(result,profanity_class=profanity_class,
-                       toxic_class=toxic_class,
-                       insult_class=insult_class,
-                       threat_class=threat_class,
-                       dangerous_class=dangerous_class)
+    where_clauses = build_where_clauses(profanity_class=profanity_class,
+                                        toxic_class=toxic_class,
+                                        insult_class=insult_class,
+                                        threat_class=threat_class,
+                                        dangerous_class=dangerous_class)
+    result = select_from_table(select_table, skip, limit, where_clauses)
     table_headers = [{'text': 'Текст до', 'filterable': False},
                      {'text': 'Текст после', 'filterable': False},
                      {'text': 'Дата обработки', 'filterable': False},
