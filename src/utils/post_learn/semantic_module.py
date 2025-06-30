@@ -1,3 +1,4 @@
+import datetime
 import os
 import gc
 import pandas as pd
@@ -7,7 +8,7 @@ from transformers import (AutoTokenizer, AutoModelForSequenceClassification, Tra
                           Trainer)
 from datasets import Dataset
 from src.utils.load import semantic_directory_path
-from src.utils.config import get_semantic_ver, save_semantic_ver
+from src.utils.config import get_semantic_ver, save_semantic_info
 from db.utils.select_from_table import select_from_table
 from db.utils.statemenents import select_from_model_answers_for_semantic, update_semantic_id
 from sklearn.metrics import roc_auc_score, accuracy_score, f1_score
@@ -150,7 +151,6 @@ class SemanticModule:
                     'labels']):
 
                     return False
-                    break
 
             return True
 
@@ -241,8 +241,11 @@ class SemanticModule:
 
         device = "cuda" if torch.cuda.is_available() else "cpu"
         self.__model.to(device)
-
-        save_semantic_ver(self.__model_ver)
+        model_data = {
+            'learning_date': datetime.datetime.now(),
+            'ver': self.__model_ver
+        }
+        save_semantic_info(self.__model_ver, model_data, self.__semantic_directory + '/model_data.json')
 
         self.__notify()
 

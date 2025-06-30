@@ -20,7 +20,7 @@ def get_semantic_ver():
         raise Exception('Error during configuration semantic loading')
 
 
-def save_profanity_ver(ver):
+def save_profanity_info(ver, model_data, model_dir):
     try:
         with open(config_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
@@ -29,11 +29,15 @@ def save_profanity_ver(ver):
 
         with open(config_path, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
-    except Exception as e:
-        print(f'Error during configuration profanity saving: {str(e)}')
-        raise Exception('Error during configuration profanity saving')
 
-def save_semantic_ver(ver):
+        with open(model_dir, 'w+', encoding='utf-8') as f:
+            json.dump(model_data, f, ensure_ascii=False, indent=2)
+
+    except Exception as e:
+            print(f'Error during configuration profanity saving: {str(e)}')
+            raise Exception('Error during configuration profanity saving')
+
+def save_semantic_info(ver, model_data, model_dir):
     try:
         with open(config_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
@@ -42,6 +46,10 @@ def save_semantic_ver(ver):
 
         with open(config_path, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
+
+        with open(model_dir, 'w+', encoding='utf-8') as f:
+            json.dump(model_data, f, ensure_ascii=False, indent=2)
+
     except Exception as e:
         print(f'Error during configuration semantic loading: {str(e)}')
         raise Exception('Error during configuration semantic saving')

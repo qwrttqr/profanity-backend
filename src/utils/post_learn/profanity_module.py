@@ -1,3 +1,5 @@
+import datetime
+
 import joblib
 import pandas as pd
 import numpy as np
@@ -15,7 +17,7 @@ from src.utils.text_analyzer import TextAnalyzer
 from db.utils.update_table import get_id, update_table
 from db.utils.statemenents import update_profanity_id
 from src.utils.load import profanity_path
-from src.utils.config import get_profanity_ver, save_profanity_ver
+from src.utils.config import get_profanity_ver, save_profanity_info
 
 
 class ProfanityModule:
@@ -194,7 +196,12 @@ class ProfanityModule:
         joblib.dump(self.__model, self.__model_path)
         joblib.dump(self.__vectorizer, self.__vectorizer_path)
 
-        save_profanity_ver(self.__profanity_model_ver)
+        model_data = {
+            'learning_date': datetime.datetime.now(),
+            'model_ver': self.__profanity_model_ver
+        }
+
+        save_profanity_info(self.__profanity_model_ver, model_data, profanity_path / f'ver{self.__profanity_model_ver}' / 'model_info.json')
 
         self.__notify()
 
