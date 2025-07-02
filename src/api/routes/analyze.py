@@ -95,7 +95,7 @@ def get_model_answers_table(skip: int = Query(default=0,
                       'options': ['Все', '1', '0']},
                      {'text': 'Содержит репутационный риск для отправителя', 'filterable': True,
                       'key': 'dangerous_class', 'options': ['Все', '1', '0']}]
-
+    print(result)
     return {
         'rows': result,
         'headers': table_headers

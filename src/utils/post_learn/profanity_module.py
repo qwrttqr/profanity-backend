@@ -197,7 +197,7 @@ class ProfanityModule:
         joblib.dump(self.__vectorizer, self.__vectorizer_path)
 
         model_data = {
-            'learning_date': datetime.datetime.now(),
+            'learning_date': str(datetime.datetime.now()),
             'model_ver': self.__profanity_model_ver
         }
 
