@@ -25,8 +25,8 @@ class SemanticModule:
 
     def __init__(self):
         if not hasattr(self, 'initialized'):
-            self.__model_ver = get_semantic_ver()
-            self.__semantic_directory = semantic_directory_path / f'ver{self.__model_ver}'
+            self.__semantic_model_ver = get_semantic_ver()
+            self.__semantic_directory = semantic_directory_path / f'ver{self.__semantic_model_ver}'
 
             self.__tokenizer = AutoTokenizer.from_pretrained(self.__semantic_directory)
             self.__model = AutoModelForSequenceClassification.from_pretrained(
@@ -222,10 +222,10 @@ class SemanticModule:
         if torch.cuda.is_available():
             self.__model.cuda()
 
-        self.__model_ver += 1
+        self.__semantic_model_ver += 1
 
-        self.__semantic_directory = semantic_directory_path / f'ver{self.__model_ver}'
-        os.makedirs(semantic_directory_path / f'ver{self.__model_ver}')
+        self.__semantic_directory = semantic_directory_path / f'ver{self.__semantic_model_ver}'
+        os.makedirs(semantic_directory_path / f'ver{self.__semantic_model_ver}')
 
         gc.collect()
         torch.cuda.empty_cache()
@@ -242,10 +242,11 @@ class SemanticModule:
         device = "cuda" if torch.cuda.is_available() else "cpu"
         self.__model.to(device)
         model_data = {
-            'learning_date': datetime.datetime.now(),
-            'ver': self.__model_ver
+            'learning_date': str(datetime.date.today()),
+            'model_ver': self.__semantic_model_ver
         }
-        save_semantic_info(self.__model_ver, model_data, self.__semantic_directory + '/model_data.json')
+
+        save_semantic_info(self.__semantic_model_ver, model_data, semantic_directory_path / f'ver{self.__semantic_model_ver}' / 'model_info.json')
 
         self.__notify()
 

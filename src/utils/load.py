@@ -75,3 +75,8 @@ files['deobfuscation_table'] = load_file(
     deobfuscation_table_path,
     json.load, 'r', False)
 files['config'] = load_file(config_path, json.load, 'r', False)
+
+profanity_model_info_path = get_project_root() / 'models' / 'profanity_model' / f"ver{files['config']['profanity_model']['ver']}" / 'model_info.json'
+semantic_model_info_path = get_project_root() / 'models' / 'semantic_model' / f"ver{files['config']['semantic_model']['ver']}" / 'model_info.json'
+files['profanity_model_info'] = load_file(profanity_model_info_path, json.load, 'r', False)
+files['semantic_model_info'] = load_file(semantic_model_info_path, json.load, 'r', False)

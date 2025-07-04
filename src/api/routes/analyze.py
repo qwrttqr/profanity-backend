@@ -1,11 +1,11 @@
 from sqlalchemy import or_
-from fastapi import (APIRouter, Query, Request, HTTPException)
-from db.utils import select_from_table
+from fastapi import APIRouter, Query, Request, HTTPException
+from db.utils import select_from_table, build_where_clauses
 from db.utils.statemenents import select_table
 from db.db_models.pydantic import AnswerPost
-from src.utils.post_learn.splitter import split
 from db.db_models.sqlalchemy.text import Text
-from db.utils import build_where_clauses
+from src.utils.load import files
+from src.utils.post_learn.splitter import split
 
 router = APIRouter(prefix='/analyze', tags=['profanity'])
 
@@ -95,7 +95,6 @@ def get_model_answers_table(skip: int = Query(default=0,
                       'options': ['Все', '1', '0']},
                      {'text': 'Содержит репутационный риск для отправителя', 'filterable': True,
                       'key': 'dangerous_class', 'options': ['Все', '1', '0']}]
-    print(result)
     return {
         'rows': result,
         'headers': table_headers
@@ -141,3 +140,16 @@ def load_new_answers(request: Request,
         print(f'Error during post-learning: {str(e)}')
         raise HTTPException(status_code=500,
                             detail=f'Error during post-learning: {str(e)}')
+
+
+@router.get('/get_models_info', status_code=200)
+def get_models_info():
+    try:
+
+        return {'profanity_model_info': files['profanity_model_info'],
+                'semantic_model_info': files['semantic_model_info']}
+    except Exception as e:
+        print(f'Error returning model info objects: {str(e)}')
+
+        raise HTTPException(status_code=500,
+                            detail=f'Error returning model info objects: {str(e)}')
