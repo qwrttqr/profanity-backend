@@ -15,7 +15,7 @@ def analyze_text_get(request: Request,
                      text: str = Query(...,
                                        description='Text to analyze'),
                      threshold: float = 0.5) -> dict[str, str]:
-    '''
+    """
     Analyze text toxicity via GET request.
     Args:
         text: str - text, that should be analyzed.
@@ -26,7 +26,7 @@ def analyze_text_get(request: Request,
         profanity: do text has or not profanity words.
     Raises:
         HTTP Exception - 400 status code if text for analyzing is incorrect.
-    '''
+    """
     try:
         labels = request.app.state.analyzer.analyze(text, threshold)
         class_ = labels['text_labels']['toxic']
