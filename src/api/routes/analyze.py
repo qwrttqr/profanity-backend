@@ -119,7 +119,6 @@ def load_new_answers(request: Request,
     semantic_module = request.app.state.semantic_module
     text_analyzer = request.app.state.analyzer
     profane_rows, semantic_rows = split(answers.rows)
-
     try:
         if profane_rows:
             profanity_module.post_learn(profanity_rows=profane_rows,

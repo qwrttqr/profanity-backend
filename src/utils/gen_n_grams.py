@@ -18,7 +18,6 @@ def generate_n_grams():
                                 n_gramms[n_gramm] += 1
                 with open('./files/n_grams.json', 'w+') as file:
                     json.dump(n_gramms, file)
-                    print('Successful generation')
         except:
             print('Error during trying to touch n_grams file, check files folder')
             raise Exception

@@ -179,7 +179,7 @@ class ProfanityModule:
         y_pred = final_clf.predict(X_test_vec)
         # Save metrics to show on front-end
         test_metrics = classification_report(y_test, y_pred, output_dict=True)
-
+        print(test_metrics)
         self.__model = final_clf
         self.__vectorizer = vectorizer
 
