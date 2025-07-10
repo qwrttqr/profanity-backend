@@ -7,7 +7,7 @@ from db.db_models.sqlalchemy.text import Text
 from src.utils.load import files
 from src.utils.post_learn.splitter import split
 
-router = APIRouter(prefix='/analyze', tags=['profanity'])
+router = APIRouter(prefix='/analyze', tags=['model interaction'])
 
 
 @router.get('/', status_code=200)
@@ -49,13 +49,13 @@ def get_model_answers_table(skip: int = Query(default=0,
                             limit: int = Query(default=20,
                                                description='How much rows we want to get'),
                             profanity_class: str = Query(default='all',
-                                                        description='Filter for profanity class field'),
+                                                         description='Filter for profanity class field'),
                             toxic_class: str = Query(default='all',
-                                                        description='Filter for toxic class field'),
+                                                     description='Filter for toxic class field'),
                             insult_class: str = Query(default='all',
-                                                         description='Filter for insult class field'),
+                                                      description='Filter for insult class field'),
                             threat_class: str = Query(default='all',
-                                                         description='Filter for threat class field'),
+                                                      description='Filter for threat class field'),
                             dangerous_class: str = Query(default='all',
                                                          description='Filter for dangerous class field')):
     """
@@ -80,7 +80,9 @@ def get_model_answers_table(skip: int = Query(default=0,
                                         insult_class=insult_class,
                                         threat_class=threat_class,
                                         dangerous_class=dangerous_class)
+
     result = select_from_table(select_table, skip, limit, where_clauses)
+
     table_headers = [{'text': 'Текст до', 'filterable': False},
                      {'text': 'Текст после', 'filterable': False},
                      {'text': 'Дата обработки', 'filterable': False},
@@ -101,7 +103,7 @@ def get_model_answers_table(skip: int = Query(default=0,
     }
 
 
-@router.post('/upload_answers', status_code=200)
+@router.post('/upload_answers_for_metrics', status_code=200)
 def load_new_answers(request: Request,
                      answers: AnswerPost,
                      threshold: float = 0.5):
@@ -114,20 +116,75 @@ def load_new_answers(request: Request,
     Returns:
         updated rows: list - list of rows that was processed by new model instances
     """
-
     profanity_module = request.app.state.profanity_module
     semantic_module = request.app.state.semantic_module
     text_analyzer = request.app.state.analyzer
     profane_rows, semantic_rows = split(answers.rows)
+    metrics = []
+
     try:
         if profane_rows:
+            metrics_obj = {
+                # Header to show on frontend
+                'name': 'Метрики profanity модели'
+            }
+            # Collect all the metrics
+            for key, value in (profanity_module.post_learn(profanity_rows=profane_rows,
+                                                           text_analyzer=text_analyzer)).items():
+                metrics_obj[key] = value
+            metrics.append(metrics_obj)
+            # Commented, because semantic metrics processing is not done yet
+            # if semantic_rows:
+            #     metrics_obj = {
+            #         # Header to show on frontend
+            #         'name': 'Метрики semantic модели'
+            #     }
+            #     # Collect all the metrics
+            #     for key, value in (semantic_module.post_learn(semantic_rows=semantic_rows,
+            #                                                    text_analyzer=text_analyzer,
+            #                                                    threshold=threshold)).items():
+            #         metrics_obj[key] = value
+            metrics.append(metrics_obj)
+        return {'metrics': metrics}
+
+
+    except Exception as e:
+        print(f'Error during post-learning: {str(e)}')
+        raise HTTPException(status_code=500,
+                            detail=f'Error during post-learning: {str(e)}')
+
+
+@router.post('/approve_model', status_code=200)
+def load_new_answers(request: Request,
+                     answers: AnswerPost,
+                     approve_profanity: bool = False,
+                     approve_semantic: bool = False,
+                     threshold: float = 0.5):
+    """
+    Accepts list of rows with data for post-learning.
+    Args:
+        request: Request object
+        answers: list - edited rows with actual answers
+        threshold: float(optional) - threshold by exceeding which label in classification will be 1
+    Returns:
+        updated rows: list - list of rows that was processed by new model instances
+    """
+    profanity_module = request.app.state.profanity_module
+    semantic_module = request.app.state.semantic_module
+    text_analyzer = request.app.state.analyzer
+    profane_rows, semantic_rows = split(answers.rows)
+
+    try:
+        if profane_rows and approve_profanity:
             profanity_module.post_learn(profanity_rows=profane_rows,
                                         text_analyzer=text_analyzer,
-                                        threshold=threshold)
-        if semantic_rows:
+                                        save_model=True)
+
+        if semantic_rows and approve_semantic:
             semantic_module.post_learn(semantic_rows=semantic_rows,
                                        text_analyzer=text_analyzer,
-                                       threshold=threshold)
+                                       threshold=threshold,
+                                       save_model=True)
 
         where_clauses = [or_(*[Text.id == item['id'] for item in answers.rows])]
 

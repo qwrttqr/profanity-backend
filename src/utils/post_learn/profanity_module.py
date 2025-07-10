@@ -116,14 +116,28 @@ class ProfanityModule:
 
         return df
 
-    def post_learn(self, profanity_rows, text_analyzer: TextAnalyzer,
-                   threshold: float = 0.5):
+    @staticmethod
+    def __transform_metrics(metrics: dict) -> dict[str, dict[str, float|int]]:
+        return {
+            '0': metrics['0'],
+            '1': metrics['1'],
+            'accuracy': metrics['accuracy']
+        }
+
+    def post_learn(self, profanity_rows, text_analyzer: TextAnalyzer, save_model = False) -> dict[str, dict[str,float]|float]:
         """
         Train a profanity classification model with calibrated probabilities.
 
         When we got rows with data we are building a dataset by following rules:
         If profanity changed from 0 to 1 -> add profane word into the dataset with 1 label
         Otherwise mark the text as not containing profane words
+
+        Args:
+            profanity_rows: list - new rows for which model will do re-predictions
+            text_analyzer: TextAnalyzer - analyzer module instance
+            save_model: bool - Boolean flag on which we decide do we save new model or not
+        Returns:
+            dict|None - dictionary with metrics or None
         """
         dataframe = self.__prepare_data(profanity_rows)
         rows = []
@@ -178,36 +192,38 @@ class ProfanityModule:
 
         y_pred = final_clf.predict(X_test_vec)
         # Save metrics to show on front-end
-        test_metrics = classification_report(y_test, y_pred, output_dict=True)
-        print(test_metrics)
-        self.__model = final_clf
-        self.__vectorizer = vectorizer
+        test_metrics = ProfanityModule.__transform_metrics(classification_report(y_test, y_pred, output_dict=True))
+        if save_model:
+            self.__model = final_clf
+            self.__vectorizer = vectorizer
 
-        self.__profanity_model_ver += 1
+            self.__profanity_model_ver += 1
 
-        os.makedirs(profanity_path / f'ver{self.__profanity_model_ver}')
+            os.makedirs(profanity_path / f'ver{self.__profanity_model_ver}')
 
-        self.__model_path = (profanity_path / f'ver{self.__profanity_model_ver}' /
-                             'model.joblib')
+            self.__model_path = (profanity_path / f'ver{self.__profanity_model_ver}' /
+                                 'model.joblib')
 
-        self.__vectorizer_path = (profanity_path / f'ver{self.__profanity_model_ver}' /
-                                  'vectorizer.joblib')
+            self.__vectorizer_path = (profanity_path / f'ver{self.__profanity_model_ver}' /
+                                      'vectorizer.joblib')
 
-        joblib.dump(self.__model, self.__model_path)
-        joblib.dump(self.__vectorizer, self.__vectorizer_path)
+            joblib.dump(self.__model, self.__model_path)
+            joblib.dump(self.__vectorizer, self.__vectorizer_path)
 
-        model_data = {
-            'learning_date': str(datetime.date.today()),
-            'model_ver': self.__profanity_model_ver
-        }
+            model_data = {
+                'learning_date': str(datetime.date.today()),
+                'model_ver': self.__profanity_model_ver
+            }
 
-        save_profanity_info(self.__profanity_model_ver, model_data, profanity_path / f'ver{self.__profanity_model_ver}' / 'model_info.json')
+            save_profanity_info(self.__profanity_model_ver, model_data, profanity_path / f'ver{self.__profanity_model_ver}' / 'model_info.json')
 
-        self.__notify()
+            self.__notify()
 
-        for item in rows:
-            class_ = text_analyzer.predict_profanity(item['phrase'])
-            profanity_id = get_id(table_type='profanity_table', profanity_class=class_)
-            update_table(update_profanity_id, where={'id': item['id']},
-                         values={'profanity_id': profanity_id})
+            for item in rows:
+                class_ = text_analyzer.predict_profanity(item['phrase'])
+                profanity_id = get_id(table_type='profanity_table', profanity_class=class_)
+                update_table(update_profanity_id, where={'id': item['id']},
+                             values={'profanity_id': profanity_id})
+            return
 
+        return test_metrics
