@@ -119,8 +119,8 @@ class ProfanityModule:
     @staticmethod
     def __transform_metrics(metrics: dict) -> dict[str, dict[str, float|int]]:
         return {
-            '0': metrics['0'],
-            '1': metrics['1'],
+            'Не матное': metrics['0'],
+            'Матное': metrics['1'],
             'accuracy': metrics['accuracy']
         }
 
@@ -193,6 +193,7 @@ class ProfanityModule:
         y_pred = final_clf.predict(X_test_vec)
         # Save metrics to show on front-end
         test_metrics = ProfanityModule.__transform_metrics(classification_report(y_test, y_pred, output_dict=True))
+        print(test_metrics)
         if save_model:
             self.__model = final_clf
             self.__vectorizer = vectorizer

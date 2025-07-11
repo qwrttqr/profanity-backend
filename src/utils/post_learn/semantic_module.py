@@ -1,6 +1,8 @@
 import datetime
 import os
 import gc
+
+import numpy
 import pandas as pd
 import torch
 from src.utils.text_analyzer import TextAnalyzer
@@ -11,7 +13,7 @@ from src.utils.load import semantic_directory_path
 from src.utils.config import get_semantic_ver, save_semantic_info
 from db.utils.select_from_table import select_from_table
 from db.utils.statemenents import select_from_model_answers_for_semantic, update_semantic_id
-from sklearn.metrics import roc_auc_score, accuracy_score, f1_score
+from sklearn.metrics import roc_auc_score, accuracy_score, f1_score, classification_report
 from db.utils.update_table import get_id, update_table
 
 
@@ -116,7 +118,28 @@ class SemanticModule:
 
         return df
 
-    def post_learn(self, semantic_rows, text_analyzer: TextAnalyzer, threshold: float = 0.5):
+    @staticmethod
+    def __transform_metrics(eval_results: dict[str, float],
+                            report: dict[str, dict[str, float]],
+                            filtered_labels: numpy.array) -> dict[str, dict[str, float]
+                                                                       | dict[str, dict[str, float]]
+                                                                       | dict[str, int]]:
+
+        return {
+            'training_metrics': eval_results,
+            'classification_report': report,
+            'class_distribution': {
+                'toxic': int(filtered_labels[:, 0].sum()),
+                'insult': int(filtered_labels[:, 1].sum()),
+                'threat': int(filtered_labels[:, 2].sum()),
+                'dangerous': int(filtered_labels[:, 3].sum())
+            }
+        }
+
+    def post_learn(self, semantic_rows,
+                   text_analyzer: TextAnalyzer,
+                   threshold: float = 0.5,
+                   save_metrics: bool = False):
         """
         Train a semantic classification model by given rows
         """
@@ -134,7 +157,7 @@ class SemanticModule:
         dataset = Dataset.from_pandas(dataframe)
         dataset = dataset.shuffle()
 
-        train_test_split = dataset.train_test_split(test_size=0.1)
+        train_test_split = dataset.train_test_split(test_size=0.3)
         train_dataset = train_test_split['train']
         eval_dataset = train_test_split['test']
 
@@ -149,7 +172,6 @@ class SemanticModule:
             for item in dataset:
                 if all(label == 1 for label in item['labels']) or all(label == 0 for label in item[
                     'labels']):
-
                     return False
 
             return True
@@ -216,52 +238,79 @@ class SemanticModule:
         )
 
         trainer.train()
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.__model.to(device)
+        eval_results = trainer.evaluate()
+        predictions = trainer.predict(tokenized_eval)
 
-        if torch.cuda.is_available():
-            self.__model.cuda()
+        # Process predictions
+        probs = torch.sigmoid(torch.tensor(predictions.predictions)).numpy()
+        preds = (probs >= threshold).astype(int)
+        labels = predictions.label_ids
 
-        self.__semantic_model_ver += 1
+        # Select only the 4 relevant classes
+        class_indices = [0, 1, 3, 4]  # toxic, insult, threat, dangerous
+        filtered_labels = labels[:, class_indices]
+        filtered_preds = preds[:, class_indices]
 
-        self.__semantic_directory = semantic_directory_path / f'ver{self.__semantic_model_ver}'
-        os.makedirs(semantic_directory_path / f'ver{self.__semantic_model_ver}')
+        # Generate metrics
+        report = classification_report(
+            filtered_labels,
+            filtered_preds,
+            target_names=['toxic', 'insult', 'threat', 'dangerous'],
+            output_dict=True
+        )
 
-        gc.collect()
-        torch.cuda.empty_cache()
+        metrics = SemanticModule.__transform_metrics(eval_results, report, filtered_labels)
 
-        self.__model.save_pretrained(self.__semantic_directory)
-        self.__tokenizer.save_pretrained(self.__semantic_directory)
+        if save_metrics:
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+            self.__model.to(device)
 
-        del self.__model
-        del self.__tokenizer
+            if torch.cuda.is_available():
+                self.__model.cuda()
 
-        self.__model = AutoModelForSequenceClassification.from_pretrained(self.__semantic_directory)
-        self.__tokenizer = AutoTokenizer.from_pretrained(self.__semantic_directory)
+            self.__semantic_model_ver += 1
 
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.__model.to(device)
-        model_data = {
-            'learning_date': str(datetime.date.today()),
-            'model_ver': self.__semantic_model_ver
-        }
+            self.__semantic_directory = semantic_directory_path / f'ver{self.__semantic_model_ver}'
+            os.makedirs(semantic_directory_path / f'ver{self.__semantic_model_ver}')
 
-        save_semantic_info(self.__semantic_model_ver, model_data, semantic_directory_path / f'ver{self.__semantic_model_ver}' / 'model_info.json')
+            gc.collect()
+            torch.cuda.empty_cache()
 
-        self.__notify()
+            self.__model.save_pretrained(self.__semantic_directory)
+            self.__tokenizer.save_pretrained(self.__semantic_directory)
 
-        for item in rows:
-            labels = text_analyzer.get_semantic_labels(text=item['phrase'],
-                                                       threshold=threshold)
-            text_labels = {
-                'toxic': labels[0],
-                'insult': labels[1],
-                'threat': labels[3],
-                'dangerous': labels[4]
+            del self.__model
+            del self.__tokenizer
+
+            self.__model = AutoModelForSequenceClassification.from_pretrained(self.__semantic_directory)
+            self.__tokenizer = AutoTokenizer.from_pretrained(self.__semantic_directory)
+
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+            self.__model.to(device)
+            model_data = {
+                'learning_date': str(datetime.date.today()),
+                'model_ver': self.__semantic_model_ver
             }
 
-            semantic_id = get_id(table_type='semantic_table',
-                                 semantic_classes=text_labels)
+            save_semantic_info(self.__semantic_model_ver, model_data,
+                               semantic_directory_path / f'ver{self.__semantic_model_ver}' / 'model_info.json')
 
-            update_table(update_semantic_id, where={'id': item['id']},
-                         values={'semantic_id': semantic_id})
+            self.__notify()
+
+            for item in rows:
+                labels = text_analyzer.get_semantic_labels(text=item['phrase'],
+                                                           threshold=threshold)
+                text_labels = {
+                    'toxic': labels[0],
+                    'insult': labels[1],
+                    'threat': labels[3],
+                    'dangerous': labels[4]
+                }
+
+                semantic_id = get_id(table_type='semantic_table',
+                                     semantic_classes=text_labels)
+
+                update_table(update_semantic_id, where={'id': item['id']},
+                             values={'semantic_id': semantic_id})
+
+        return metrics

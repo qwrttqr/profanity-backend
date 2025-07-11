@@ -126,27 +126,29 @@ def load_new_answers(request: Request,
         if profane_rows:
             metrics_obj = {
                 # Header to show on frontend
-                'name': 'Метрики profanity модели'
+                'name': 'Метрики profanity модели',
+                # Metrics type
+                'type': 'profanity'
             }
             # Collect all the metrics
             for key, value in (profanity_module.post_learn(profanity_rows=profane_rows,
                                                            text_analyzer=text_analyzer)).items():
                 metrics_obj[key] = value
             metrics.append(metrics_obj)
-            # Commented, because semantic metrics processing is not done yet
-            # if semantic_rows:
-            #     metrics_obj = {
-            #         # Header to show on frontend
-            #         'name': 'Метрики semantic модели'
-            #     }
-            #     # Collect all the metrics
-            #     for key, value in (semantic_module.post_learn(semantic_rows=semantic_rows,
-            #                                                    text_analyzer=text_analyzer,
-            #                                                    threshold=threshold)).items():
-            #         metrics_obj[key] = value
+        if semantic_rows:
+            metrics_obj = {
+                # Header to show on frontend
+                'name': 'Метрики semantic модели',
+                # Metrics type
+                'type': 'semantic'
+            }
+            # Collect all the metrics
+            for key, value in (semantic_module.post_learn(semantic_rows=semantic_rows,
+                                                           text_analyzer=text_analyzer,
+                                                           threshold=threshold)).items():
+                metrics_obj[key] = value
             metrics.append(metrics_obj)
         return {'metrics': metrics}
-
 
     except Exception as e:
         print(f'Error during post-learning: {str(e)}')
