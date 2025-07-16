@@ -4,7 +4,7 @@ import joblib
 import pandas as pd
 import numpy as np
 import os
-from src.utils.load import load_file
+from src.utils.file_work import load_file
 from sklearn.model_selection import train_test_split, GridSearchCV
 from db.utils.select_from_table import select_from_table
 from db.utils.statemenents import select_from_model_answers_for_profanity
@@ -16,8 +16,8 @@ from src.utils.text_prepar import TextPreparation
 from src.utils.text_analyzer import TextAnalyzer
 from db.utils.update_table import get_id, update_table
 from db.utils.statemenents import update_profanity_id
-from src.utils.load import profanity_path
-from src.utils.config import get_profanity_ver, save_profanity_info
+from src.utils.file_work import profanity_path
+from src.utils.file_work import get_profanity_ver, save_profanity_info
 
 
 class ProfanityModule:
@@ -30,13 +30,16 @@ class ProfanityModule:
 
     def __init__(self):
         if not hasattr(self, 'initialized'):
-            self.__profanity_model_ver = get_profanity_ver()
+            try:
+                self.__profanity_model_ver = get_profanity_ver()
 
-            self.__model_path = (profanity_path / f'ver{self.__profanity_model_ver}' /
-                                 'model.joblib')
+                self.__model_path = (profanity_path / f'ver{self.__profanity_model_ver}' /
+                                     'model.joblib')
 
-            self.__vectorizer_path = profanity_path / \
-                                     f'ver{self.__profanity_model_ver}' / 'vectorizer.joblib'
+                self.__vectorizer_path = profanity_path / \
+                                         f'ver{self.__profanity_model_ver}' / 'vectorizer.joblib'
+            except:
+                self.startup_profanity_model()
 
             self.__model = load_file(self.__model_path,
                                      joblib.load, 'rb',
@@ -117,14 +120,15 @@ class ProfanityModule:
         return df
 
     @staticmethod
-    def __transform_metrics(metrics: dict) -> dict[str, dict[str, float|int]]:
+    def __transform_metrics(metrics: dict) -> dict[str, dict[str, float | int]]:
         return {
             '0': metrics['0'],
             '1': metrics['1'],
             'accuracy': metrics['accuracy']
         }
 
-    def post_learn(self, profanity_rows, text_analyzer: TextAnalyzer, save_model = False) -> dict[str, dict[str,float]|float]:
+    def post_learn(self, profanity_rows, text_analyzer: TextAnalyzer, save_model=False) -> dict[
+        str, dict[str, float] | float]:
         """
         Train a profanity classification model with calibrated probabilities.
 
@@ -215,7 +219,8 @@ class ProfanityModule:
                 'model_ver': self.__profanity_model_ver
             }
 
-            save_profanity_info(self.__profanity_model_ver, model_data, profanity_path / f'ver{self.__profanity_model_ver}' / 'model_info.json')
+            save_profanity_info(self.__profanity_model_ver, model_data,
+                                profanity_path / f'ver{self.__profanity_model_ver}' / 'model_info.json')
 
             self.__notify()
 
@@ -227,3 +232,76 @@ class ProfanityModule:
             return
 
         return test_metrics
+
+    def startup_profanity_model(self):
+        """
+        Train a profanity classification model with calibrated probabilities as a startup model.
+
+        """
+        dataframe = self.__prepare_data([])
+
+        X, y = dataframe.text, dataframe.profanity_class
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.2, random_state=42, stratify=y
+        )
+
+        vectorizer = CountVectorizer()
+        X_train_vec = vectorizer.fit_transform(X_train)
+        X_test_vec = vectorizer.transform(X_test)
+
+        param_grid = {
+            'C': np.array([0.001, 0.01, 0.1, 1., 10., 100.]),
+            'class_weight': [None, 'balanced']
+        }
+
+        scoring = {
+            'f1': 'f1',
+            'recall': 'recall',
+            'precision': 'precision',
+            'accuracy': 'accuracy',
+            'balanced_accuracy': 'balanced_accuracy'
+        }
+
+        # Grid search with cross-validation
+        grid_clf_cv = GridSearchCV(
+            estimator=LinearSVC(dual=False),
+            param_grid=param_grid,
+            scoring=scoring,
+            refit='f1',
+            return_train_score=True,
+            cv=7
+        )
+
+        grid_clf_cv.fit(X_train_vec, y_train)
+
+        final_clf = CalibratedClassifierCV(
+            estimator=LinearSVC(**grid_clf_cv.best_params_)
+        )
+        final_clf.fit(X_train_vec, y_train)
+
+        y_pred = final_clf.predict(X_test_vec)
+        self.__model = final_clf
+        self.__vectorizer = vectorizer
+
+        self.__profanity_model_ver = 1
+
+        os.makedirs(profanity_path / f'ver{self.__profanity_model_ver}')
+
+        self.__model_path = (profanity_path / f'ver{self.__profanity_model_ver}' /
+                             'model.joblib')
+
+        self.__vectorizer_path = (profanity_path / f'ver{self.__profanity_model_ver}' /
+                                  'vectorizer.joblib')
+
+        joblib.dump(self.__model, self.__model_path)
+        joblib.dump(self.__vectorizer, self.__vectorizer_path)
+
+        model_data = {
+            'learning_date': str(datetime.date.today()),
+            'model_ver': self.__profanity_model_ver
+        }
+
+        save_profanity_info(self.__profanity_model_ver, model_data,
+                            profanity_path / f'ver{self.__profanity_model_ver}' / 'model_info.json')
+
+        self.__notify()

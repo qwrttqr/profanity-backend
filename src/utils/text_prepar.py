@@ -1,5 +1,5 @@
 import re
-from .load import files
+from .file_work import files
 from pymorphy2 import MorphAnalyzer
 from nltk.stem.snowball import SnowballStemmer
 
