@@ -4,7 +4,7 @@ from db.utils import select_from_table, build_where_clauses
 from db.utils.statemenents import select_table
 from db.db_models.pydantic import AnswerPost
 from db.db_models.sqlalchemy.text import Text
-from src.utils.load import files
+from src.utils.file_work import files
 from src.utils.post_learn.splitter import split
 
 router = APIRouter(prefix='/analyze', tags=['model interaction'])

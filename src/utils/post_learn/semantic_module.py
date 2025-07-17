@@ -9,8 +9,7 @@ from src.utils.text_analyzer import TextAnalyzer
 from transformers import (AutoTokenizer, AutoModelForSequenceClassification, TrainingArguments,
                           Trainer)
 from datasets import Dataset
-from src.utils.load import semantic_directory_path
-from src.utils.config import get_semantic_ver, save_semantic_info
+from src.utils.file_work import semantic_directory_path, get_semantic_ver, save_semantic_info
 from db.utils.select_from_table import select_from_table
 from db.utils.statemenents import select_from_model_answers_for_semantic, update_semantic_id
 from sklearn.metrics import roc_auc_score, accuracy_score, f1_score, classification_report
