@@ -104,7 +104,7 @@ def get_model_answers_table(skip: int = Query(default=0,
 
 
 @router.post('/upload_answers_for_metrics', status_code=200)
-def load_new_answers(request: Request,
+def upload_answers_for_metrics(request: Request,
                      answers: AnswerPost,
                      threshold: float = 0.5):
     """
@@ -156,44 +156,57 @@ def load_new_answers(request: Request,
                             detail=f'Error during post-learning: {str(e)}')
 
 
-@router.post('/approve_model', status_code=200)
-def load_new_answers(request: Request,
-                     answers: AnswerPost,
-                     approve_profanity: bool = False,
-                     approve_semantic: bool = False,
-                     threshold: float = 0.5):
+@router.post('/update_profanity_model', status_code=200)
+def update_profanity_model(request: Request, profanity_rows: AnswerPost) -> dict[str, list]:
     """
-    Accepts list of rows with data for post-learning.
-    Args:
-        request: Request object
-        answers: list - edited rows with actual answers
-        threshold: float(optional) - threshold by exceeding which label in classification will be 1
-    Returns:
-        updated rows: list - list of rows that was processed by new model instances
-    """
+       Post-learns profanity model.
+       Args:
+           request: Request obj\n
+           profanity_rows: list - list of rows with new profanity answers\n
+
+       Returns:
+           updated rows: dict[str, list] - list of rows that was processed by new model instances
+       """
     profanity_module = request.app.state.profanity_module
-    semantic_module = request.app.state.semantic_module
     text_analyzer = request.app.state.analyzer
-    profane_rows, semantic_rows = split(answers.rows)
-
     try:
-        if profane_rows and approve_profanity:
-            profanity_module.post_learn(profanity_rows=profane_rows,
-                                        text_analyzer=text_analyzer,
-                                        save_model=True)
+        profanity_module.post_learn(profanity_rows=profanity_rows.rows,
+                                    text_analyzer=text_analyzer,
+                                    save_model=True)
 
-        if semantic_rows and approve_semantic:
-            semantic_module.post_learn(semantic_rows=semantic_rows,
-                                       text_analyzer=text_analyzer,
-                                       threshold=threshold,
-                                       save_model=True)
-
-        where_clauses = [or_(*[Text.id == item['id'] for item in answers.rows])]
+        where_clauses = [or_(*[Text.id == item['id'] for item in profanity_rows.rows])]
 
         result = select_from_table(select_table, where_clauses=where_clauses)
         return {'updated_rows': result}
+    except Exception as e:
+        print(f'Error during post-learning: {str(e)}')
+        raise HTTPException(status_code=500,
+                            detail=f'Error during post-learning: {str(e)}')
 
+@router.post('/update_semantic_model', status_code=200)
+def update_sematic_model(request: Request, semantic_rows: AnswerPost,  threshold: float = 0.5) -> dict[str, list]:
+    """
+    Post-learns semantic model.
+    Args:
+        request: Request obj\n
+        semantic_rows: list - list of rows with new semantic answers\n
+        threshold: float(optional) - threshold by exceeding which label in classification will be 1
 
+    Returns:
+        updated rows: dict[str, list] - list of rows that was processed by new model instances
+    """
+    text_analyzer = request.app.state.analyzer
+    semantic_module = request.app.state.semantic_module
+    try:
+        semantic_module.post_learn(semantic_rows=semantic_rows.rows,
+                                   text_analyzer=text_analyzer,
+                                   threshold=threshold,
+                                   save_model=True)
+
+        where_clauses = [or_(*[Text.id == item['id'] for item in semantic_rows.rows])]
+
+        result = select_from_table(select_table, where_clauses=where_clauses)
+        return {'updated_rows': result}
     except Exception as e:
         print(f'Error during post-learning: {str(e)}')
         raise HTTPException(status_code=500,

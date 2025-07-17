@@ -85,8 +85,10 @@ files['semantic_model_info'] = load_file(semantic_model_info_path, json.load, 'r
 def create_profanity_dir():
     os.makedirs(get_project_root() / 'models' / 'profanity_model')
 
+
 def create_semantic_dir():
     os.makedirs(get_project_root() / 'models' / 'semantic_model')
+
 
 def check_models_folder_exist():
     if not (os.path.exists(get_project_root() / 'models' / 'profanity_model')):
@@ -97,6 +99,7 @@ def check_models_folder_exist():
         print('Semantic model path is not exist')
         create_semantic_dir()
         print('Semantic path created')
+
 
 def get_profanity_ver():
     try:
@@ -124,8 +127,11 @@ def save_profanity_info(ver, model_data, model_dir):
 
         with open(config_path, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
+
         with open(model_dir, 'w+', encoding='utf-8') as f:
             json.dump(model_data, f, ensure_ascii=False, indent=2)
+
+        files['profanity_model_info'] = load_file(profanity_model_info_path, json.load, 'r', False)
 
     except Exception as e:
         print(f'Error during configuration profanity saving: {str(e)}')
@@ -144,6 +150,8 @@ def save_semantic_info(ver, model_data, model_dir):
 
         with open(model_dir, 'w+', encoding='utf-8') as f:
             json.dump(model_data, f, ensure_ascii=False, indent=2)
+
+        files['semantic_model_info'] = load_file(semantic_model_info_path, json.load, 'r', False)
 
     except Exception as e:
         print(f'Error during configuration semantic loading: {str(e)}')

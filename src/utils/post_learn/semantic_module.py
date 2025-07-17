@@ -1,13 +1,16 @@
 import datetime
 import os
-import gc
-
-import numpy
+import numpy as np
 import pandas as pd
 import torch
+import gc
+
+from sklearn.model_selection import train_test_split
+from torch.utils.data import DataLoader
+from tqdm.auto import tqdm, trange
 from src.utils.text_analyzer import TextAnalyzer
 from transformers import (AutoTokenizer, AutoModelForSequenceClassification, TrainingArguments,
-                          Trainer)
+                          Trainer, DataCollatorWithPadding)
 from datasets import Dataset
 from src.utils.file_work import semantic_directory_path, get_semantic_ver, save_semantic_info
 from db.utils.select_from_table import select_from_table
@@ -27,33 +30,32 @@ class SemanticModule:
     def __init__(self):
         if not hasattr(self, 'initialized'):
             self.__semantic_model_ver = get_semantic_ver()
-            self.__semantic_directory = semantic_directory_path / f'ver{self.__semantic_model_ver}'
+            self.__observers = []
+            self.initialized = True
 
-            self.__tokenizer = AutoTokenizer.from_pretrained(self.__semantic_directory)
-            self.__model = AutoModelForSequenceClassification.from_pretrained(
-                self.__semantic_directory)
+            if os.path.exists(semantic_directory_path / f'ver{self.__semantic_model_ver}'):
+
+                self.__semantic_directory = semantic_directory_path / f'ver{self.__semantic_model_ver}'
+
+                self.__tokenizer = AutoTokenizer.from_pretrained(self.__semantic_directory)
+                self.__model = AutoModelForSequenceClassification.from_pretrained(
+                    self.__semantic_directory)
+            else:
+                print('Semantic model not found, startin up semantic model...')
+
+                self.__startup_semantic_model()
+                self.__semantic_directory = semantic_directory_path / f'ver{self.__semantic_model_ver}'
+                self.__tokenizer = AutoTokenizer.from_pretrained(self.__semantic_directory)
+                self.__model = AutoModelForSequenceClassification.from_pretrained(
+                    self.__semantic_directory)
+
+                print('Semantic model started up')
 
             device = "cuda" if torch.cuda.is_available() else "cpu"
             self.__model.to(device)
 
             if torch.cuda.is_available():
                 self.__model.cuda()
-
-            self.__observers = []
-
-            self.initialized = True
-
-    def get_model(self):
-
-        return self.__model
-
-    def get_tokenizer(self):
-
-        return self.__tokenizer
-
-    def attach(self, observer):
-        if observer not in self.__observers:
-            self.__observers.append(observer)
 
     def __notify(self):
         for item in self.__observers:
@@ -63,9 +65,20 @@ class SemanticModule:
                 print('Error during observer notifying', e)
                 raise Exception('Error during observer notifying')
 
+    def __get_data_as_dataframe(self) -> pd.DataFrame:
+        """
+        Returns semantic rows as pandas DataFrame with columns [id, text_after_processing, toxic_class, insult_class, threat_class, dangerous_class]
+
+        Returns:
+            pd.DataFrame - DataFrame with data from database
+        """
+        print(select_from_table(statement=select_from_model_answers_for_semantic))
+        return pd.DataFrame(select_from_table(statement=select_from_model_answers_for_semantic))
+
+    # TODO recreate with actual 4 labels
     def __prepare_data(self, semantic_rows: list[dict[str, int | str | dict]],
                        text_analyzer,
-                       threshold: float):
+                       threshold: float) -> pd.DataFrame:
         """
         Creates dataframe based on currently known data and new data.
         Args:
@@ -117,12 +130,260 @@ class SemanticModule:
 
         return df
 
+    def __startup_semantic_model(self):
+        """
+        Startups semantic model and saves it to dedicated folder.
+        """
+        # Define labels to match your data format
+        self.__semantic_model_ver = 1
+
+        self.__semantic_directory = semantic_directory_path / f'ver{self.__semantic_model_ver}'
+        os.makedirs(semantic_directory_path / f'ver{self.__semantic_model_ver}')
+
+        all_labels = ['toxic_class', 'insult_class', 'threat_class', 'dangerous_class']
+        model_checkpoint = "cointegrated/rubert-tiny"
+
+        # Initialize tokenizer and model
+        tokenizer = AutoTokenizer.from_pretrained(model_checkpoint)
+        model = AutoModelForSequenceClassification.from_pretrained(model_checkpoint, num_labels=len(all_labels))
+        model.config.id2label = dict(enumerate(all_labels))
+        model.config.label2id = {v: k for k, v in model.config.id2label.items()}
+        if torch.cuda.is_available():
+            model.cuda()
+
+        # Data preparation function
+        def prepare_dataset(df):
+            """
+            Prepare dataset from DataFrame with columns: text, toxic, insult, threat, dangerous
+            """
+            # Ensure all label columns exist and are binary (0 or 1)
+            for label in all_labels:
+                if label not in df.columns:
+                    raise ValueError(f"Column '{label}' not found in DataFrame")
+                df[label] = df[label].astype(int)
+
+            # Create labels matrix
+            labels_matrix = df[all_labels].values.astype(np.float32)
+
+            # Create labels_mask (all ones since we don't have missing labels)
+            labels_mask = np.ones_like(labels_matrix, dtype=np.float32)
+
+            dataset_dict = {
+                'text': df['text_after_processing'].tolist(),
+                'labels': labels_matrix.tolist(),
+                'labels_mask': labels_mask.tolist()
+            }
+
+            return Dataset.from_dict(dataset_dict)
+
+        df = self.__get_data_as_dataframe()
+        train_df, dev_df = train_test_split(df, test_size=0.2, random_state=42, stratify=df[['toxic_class',
+                                                                                             'insult_class',
+                                                                                             'threat_class',
+                                                                                             'dangerous_class']].sum(
+            axis=1))
+
+        # Prepare datasets
+        train_dataset = prepare_dataset(train_df)
+        dev_dataset = prepare_dataset(dev_df)
+
+        # Tokenization
+        def tokenize_function(examples):
+            return tokenizer(examples["text"], truncation=True, max_length=512)
+
+        train_tokenized = train_dataset.map(tokenize_function, batched=True)
+        dev_tokenized = dev_dataset.map(tokenize_function, batched=True)
+
+        # Data collator and dataloaders
+        data_collator = DataCollatorWithPadding(tokenizer)
+        batch_size = 64
+
+        train_dataloader = DataLoader(
+            train_tokenized.remove_columns('text'),
+            batch_size=batch_size,
+            drop_last=False,
+            shuffle=True,
+            num_workers=1,
+            collate_fn=data_collator
+        )
+
+        dev_dataloader = DataLoader(
+            dev_tokenized.remove_columns('text'),
+            batch_size=batch_size,
+            drop_last=False,
+            shuffle=False,  # Changed to False for consistent evaluation
+            num_workers=1,
+            collate_fn=data_collator
+        )
+
+        # Evaluation function
+        def evaluate_model(model, dev_dataloader):
+            """
+            Evaluate model and return AUC scores for each label
+            """
+            preds = []
+            facts = []
+
+            model.eval()
+            for batch in tqdm(dev_dataloader, desc="Evaluating"):
+                facts.append(batch['labels'].cpu().numpy())
+                batch = {k: v.to(model.device) for k, v in batch.items()}
+
+                with torch.no_grad():
+                    outputs = model(
+                        input_ids=batch['input_ids'],
+                        attention_mask=batch['attention_mask'],
+                        token_type_ids=batch.get('token_type_ids', None)
+                    )
+                preds.append(torch.sigmoid(outputs.logits).cpu().numpy())
+
+            facts = np.concatenate(facts)
+            preds = np.concatenate(preds)
+
+            # Calculate AUC for each label
+            results = []
+            for i, label in enumerate(all_labels):
+                try:
+                    auc = roc_auc_score(facts[:, i], preds[:, i])
+                    results.append(auc)
+                except ValueError:
+                    # Handle case where all labels are the same (no positive or negative examples)
+                    results.append(0.0)
+
+            return results, facts, preds
+
+        # Memory cleanup function
+        def cleanup():
+            gc.collect()
+            torch.cuda.empty_cache()
+
+        # Training setup
+        optimizer = torch.optim.Adam(params=model.parameters(), lr=1e-5)
+        gradient_accumulation_steps = 1
+        window = 500
+        cleanup_step = 100
+        report_step = 1000  # Reduced for more frequent reporting
+        loss_fn = torch.nn.BCEWithLogitsLoss(reduction='none')
+
+        # Initial evaluation
+        print("Initial evaluation:")
+        eval_results, _, _ = evaluate_model(model, dev_dataloader)
+        print(f"Initial AUC scores: {dict(zip(all_labels, eval_results))}")
+
+        # Training loop
+        num_epochs = 15
+        ewm_loss = 0
+
+        for epoch in trange(num_epochs, desc="Epochs"):
+            model.train()
+            tq = tqdm(train_dataloader, desc=f"Epoch {epoch + 1}")
+
+            for i, batch in enumerate(tq):
+                try:
+                    batch = {k: v.to(model.device) for k, v in batch.items()}
+
+                    outputs = model(
+                        input_ids=batch['input_ids'],
+                        attention_mask=batch['attention_mask'],
+                        token_type_ids=batch.get('token_type_ids', None)
+                    )
+
+                    # Calculate loss for each class
+                    loss_by_class = (loss_fn(outputs.logits, batch['labels']) * batch['labels_mask']).mean(dim=0)
+                    loss = loss_by_class.sum()
+
+                    loss.backward()
+
+                except RuntimeError as e:
+                    print(f'Error on epoch {epoch}, step {i}: {e}')
+                    loss = torch.tensor(0.0, device=model.device)
+                    cleanup()
+                    continue
+
+                # Gradient accumulation
+                if (i + 1) % gradient_accumulation_steps == 0:
+                    optimizer.step()
+                    optimizer.zero_grad()
+
+                # Periodic cleanup
+                if i % cleanup_step == 0:
+                    cleanup()
+
+                # Update exponential moving average of loss
+                w = 1 / min(i + 1, window)
+                ewm_loss = ewm_loss * (1 - w) + loss.item() * w
+                tq.set_description(f'Epoch {epoch + 1}, Loss: {ewm_loss:.4f}')
+
+                # Periodic evaluation
+                if i % report_step == 0 and i > 0:
+                    eval_results, _, _ = evaluate_model(model, dev_dataloader)
+                    model.train()
+                    print(f'Epoch {epoch + 1}, Step {i}: Train Loss: {ewm_loss:.4f}')
+                    print(f'Validation AUC: {dict(zip(all_labels, eval_results))}')
+
+            # End of epoch evaluation
+            eval_results, _, _ = evaluate_model(model, dev_dataloader)
+            print(f'End of Epoch {epoch + 1}: Train Loss: {ewm_loss:.4f}')
+            print(f'Validation AUC: {dict(zip(all_labels, eval_results))}')
+            print("-" * 50)
+
+        # Final evaluation
+        print("\nFinal Model Evaluation:")
+        eval_results, y_true, y_pred = evaluate_model(model, dev_dataloader)
+        print(f'Final AUC scores: {dict(zip(all_labels, eval_results))}')
+
+        # Generate predictions for new data
+        def predict_toxicity(texts, model, tokenizer, device, batch_size=32):
+            """
+            Generate predictions for a list of texts
+            """
+            model.eval()
+            all_predictions = []
+
+            # Process in batches
+            for i in range(0, len(texts), batch_size):
+                batch_texts = texts[i:i + batch_size]
+
+                # Tokenize batch
+                encoded = tokenizer(
+                    batch_texts,
+                    truncation=True,
+                    padding=True,
+                    max_length=512,
+                    return_tensors='pt'
+                )
+
+                # Move to device
+                encoded = {k: v.to(device) for k, v in encoded.items()}
+
+                # Generate predictions
+                with torch.no_grad():
+                    outputs = model(**encoded)
+                    predictions = torch.sigmoid(outputs.logits).cpu().numpy()
+
+                all_predictions.append(predictions)
+
+            return np.concatenate(all_predictions, axis=0)
+
+        # Save the model
+        model.save_pretrained(self.__semantic_directory)
+        tokenizer.save_pretrained(self.__semantic_directory)
+        model_data = {
+            'learning_date': str(datetime.date.today()),
+            'model_ver': self.__semantic_model_ver
+        }
+
+        save_semantic_info(self.__semantic_model_ver, model_data,
+                           semantic_directory_path / f'ver{self.__semantic_model_ver}' / 'model_info.json')
+
+        self.__notify()
+
     @staticmethod
     def __transform_metrics(eval_results: dict[str, float],
                             report: dict[str, dict[str, float]],
-                            filtered_labels: numpy.array) -> dict[str, dict[str, float]
-                                                                       | dict[str, dict[str, float]]
-                                                                       | dict[str, int]]:
+                            filtered_labels: np.array) -> dict[str, dict[str, float]
+                                                                    | dict[str, dict[str, float]]
+                                                                    | dict[str, int]]:
 
         return {
             'training_metrics': eval_results,
@@ -134,6 +395,18 @@ class SemanticModule:
                 'dangerous': int(filtered_labels[:, 3].sum())
             }
         }
+
+    def get_model(self):
+
+        return self.__model
+
+    def get_tokenizer(self):
+
+        return self.__tokenizer
+
+    def attach(self, observer):
+        if observer not in self.__observers:
+            self.__observers.append(observer)
 
     def post_learn(self, semantic_rows,
                    text_analyzer: TextAnalyzer,
