@@ -1,10 +1,11 @@
 import datetime
+import json
 import os
 import numpy as np
 import pandas as pd
 import torch
 import gc
-
+from typing import Any
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm, trange
@@ -12,7 +13,7 @@ from src.utils.text_analyzer import TextAnalyzer
 from transformers import (AutoTokenizer, AutoModelForSequenceClassification, TrainingArguments,
                           Trainer, DataCollatorWithPadding)
 from datasets import Dataset
-from src.utils.file_work import semantic_directory_path, get_semantic_ver, save_semantic_info
+from src.utils.file_work import FileManager
 from db.utils.select_from_table import select_from_table
 from db.utils.statemenents import select_from_model_answers_for_semantic, update_semantic_id
 from sklearn.metrics import roc_auc_score, accuracy_score, f1_score, classification_report
@@ -29,22 +30,22 @@ class SemanticModule:
 
     def __init__(self):
         if not hasattr(self, 'initialized'):
-            self.__semantic_model_ver = get_semantic_ver()
+            self.__file_manager = FileManager()
+            self.__semantic_model_ver = self.__file_manager.get_semantic_ver()
             self.__observers = []
             self.initialized = True
+            if os.path.exists(self.__file_manager.get_semantic_model_path(self.__semantic_model_ver)):
 
-            if os.path.exists(semantic_directory_path / f'ver{self.__semantic_model_ver}'):
-
-                self.__semantic_directory = semantic_directory_path / f'ver{self.__semantic_model_ver}'
+                self.__semantic_directory = self.__file_manager.get_semantic_model_path(self.__semantic_model_ver)
 
                 self.__tokenizer = AutoTokenizer.from_pretrained(self.__semantic_directory)
                 self.__model = AutoModelForSequenceClassification.from_pretrained(
                     self.__semantic_directory)
             else:
-                print('Semantic model not found, startin up semantic model...')
+                print('Semantic model not found, starting up semantic model...')
 
                 self.__startup_semantic_model()
-                self.__semantic_directory = semantic_directory_path / f'ver{self.__semantic_model_ver}'
+                self.__semantic_directory = self.__file_manager.get_semantic_model_path(self.__semantic_model_ver)
                 self.__tokenizer = AutoTokenizer.from_pretrained(self.__semantic_directory)
                 self.__model = AutoModelForSequenceClassification.from_pretrained(
                     self.__semantic_directory)
@@ -64,6 +65,19 @@ class SemanticModule:
             except Exception as e:
                 print('Error during observer notifying', e)
                 raise Exception('Error during observer notifying')
+
+    def __save_model(self, model_data: dict[str, Any]):
+        """
+            Saves model and its parts, updates semantic_directory variable
+
+            Args:
+                model_data: dict - dictionary with arbitrary model data
+        """
+        self.__file_manager.save_file(self.__semantic_directory, self.__model.save_pretrained)
+        self.__file_manager.save_file(self.__semantic_directory, self.__tokenizer.save_pretrained)
+
+        self.__file_manager.save_semantic_info(self.__semantic_model_ver, model_data)
+        self.__semantic_directory = self.__file_manager.get_semantic_model_path(self.__semantic_model_ver)
 
     def __get_data_as_dataframe(self) -> pd.DataFrame:
         """
@@ -134,12 +148,10 @@ class SemanticModule:
         """
         Startups semantic model and saves it to dedicated folder.
         """
-        # Define labels to match your data format
+
         self.__semantic_model_ver = 1
 
-        self.__semantic_directory = semantic_directory_path / f'ver{self.__semantic_model_ver}'
-        os.makedirs(semantic_directory_path / f'ver{self.__semantic_model_ver}')
-
+        # Define labels to match your data format
         all_labels = ['toxic_class', 'insult_class', 'threat_class', 'dangerous_class']
         model_checkpoint = "cointegrated/rubert-tiny"
 
@@ -332,49 +344,15 @@ class SemanticModule:
         eval_results, y_true, y_pred = evaluate_model(model, dev_dataloader)
         print(f'Final AUC scores: {dict(zip(all_labels, eval_results))}')
 
-        # Generate predictions for new data
-        def predict_toxicity(texts, model, tokenizer, device, batch_size=32):
-            """
-            Generate predictions for a list of texts
-            """
-            model.eval()
-            all_predictions = []
-
-            # Process in batches
-            for i in range(0, len(texts), batch_size):
-                batch_texts = texts[i:i + batch_size]
-
-                # Tokenize batch
-                encoded = tokenizer(
-                    batch_texts,
-                    truncation=True,
-                    padding=True,
-                    max_length=512,
-                    return_tensors='pt'
-                )
-
-                # Move to device
-                encoded = {k: v.to(device) for k, v in encoded.items()}
-
-                # Generate predictions
-                with torch.no_grad():
-                    outputs = model(**encoded)
-                    predictions = torch.sigmoid(outputs.logits).cpu().numpy()
-
-                all_predictions.append(predictions)
-
-            return np.concatenate(all_predictions, axis=0)
-
         # Save the model
-        model.save_pretrained(self.__semantic_directory)
-        tokenizer.save_pretrained(self.__semantic_directory)
+        self.__model = model
+        self.__tokenizer = tokenizer
         model_data = {
             'learning_date': str(datetime.date.today()),
             'model_ver': self.__semantic_model_ver
         }
 
-        save_semantic_info(self.__semantic_model_ver, model_data,
-                           semantic_directory_path / f'ver{self.__semantic_model_ver}' / 'model_info.json')
+        self.__save_model(model_data)
 
         self.__notify()
 
@@ -407,6 +385,19 @@ class SemanticModule:
     def attach(self, observer):
         if observer not in self.__observers:
             self.__observers.append(observer)
+
+    def get_profanity_info(self) -> int:
+        try:
+
+            return self.__file_manager.load_file(
+                (self.__file_manager.get_semantic_model_path(self.__semantic_model_ver) /
+                 'model_info.json'),
+                json.load,
+                'r', False)
+
+        except Exception as e:
+            print(f'Error getting semantic ver: {str(e)}')
+            raise Exception('Error during configuration semantic loading')
 
     def post_learn(self, semantic_rows,
                    text_analyzer: TextAnalyzer,
@@ -542,9 +533,6 @@ class SemanticModule:
 
             self.__semantic_model_ver += 1
 
-            self.__semantic_directory = semantic_directory_path / f'ver{self.__semantic_model_ver}'
-            os.makedirs(semantic_directory_path / f'ver{self.__semantic_model_ver}')
-
             gc.collect()
             torch.cuda.empty_cache()
 
@@ -563,9 +551,7 @@ class SemanticModule:
                 'learning_date': str(datetime.date.today()),
                 'model_ver': self.__semantic_model_ver
             }
-
-            save_semantic_info(self.__semantic_model_ver, model_data,
-                               semantic_directory_path / f'ver{self.__semantic_model_ver}' / 'model_info.json')
+            self.__save_model(model_data)
 
             self.__notify()
 

@@ -5,11 +5,12 @@ from src.utils import TextAnalyzer
 from db.utils.init_db import connect_db
 from src.utils.post_learn.profanity_module import ProfanityModule
 from src.utils.post_learn.semantic_module import SemanticModule
-from src.utils import check_models_folder_exist
+from src.utils.file_work import FileManager
+
 app = FastAPI()
 @app.on_event("startup")
 async def startup():
-    check_models_folder_exist()
+    FileManager() # Initializing FileManager class initializes all files too
     profanity_module = ProfanityModule()
     semantic_module = SemanticModule()
     app.state.profanity_module = profanity_module

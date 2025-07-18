@@ -1,10 +1,11 @@
 import datetime
-
+import json
 import joblib
 import pandas as pd
 import numpy as np
 import os
-from src.utils.file_work import load_file
+from typing import Any
+from src.utils.file_work import FileManager
 from sklearn.model_selection import train_test_split, GridSearchCV
 from db.utils.select_from_table import select_from_table
 from db.utils.statemenents import select_from_model_answers_for_profanity
@@ -16,8 +17,6 @@ from src.utils.text_prepar import TextPreparation
 from src.utils.text_analyzer import TextAnalyzer
 from db.utils.update_table import get_id, update_table
 from db.utils.statemenents import update_profanity_id
-from src.utils.file_work import profanity_path
-from src.utils.file_work import get_profanity_ver, save_profanity_info
 
 
 class ProfanityModule:
@@ -30,26 +29,34 @@ class ProfanityModule:
 
     def __init__(self):
         if not hasattr(self, 'initialized'):
-            self.__profanity_model_ver = get_profanity_ver()
-            self.initialized = True
+            self.__file_manager = FileManager()
+            self.__profanity_model_ver = self.__file_manager.get_profanity_ver()
             self.__observers = []
             self.__text_prepar = TextPreparation()
-            if os.path.exists(profanity_path / f'ver{self.__profanity_model_ver}' / 'model.joblib') and \
-                    os.path.exists(profanity_path / f'ver{self.__profanity_model_ver}' / 'vectorizer.joblib'):
+            self.initialized = True
 
-                self.__model_path = profanity_path / f'ver{self.__profanity_model_ver}' / 'model.joblib'
-                self.__vectorizer_path = profanity_path / f'ver{self.__profanity_model_ver}' / 'vectorizer.joblib'
+            if os.path.exists(
+                    self.__file_manager.get_profanity_model_path(self.__profanity_model_ver) / 'model.joblib') and \
+                    os.path.exists(self.__file_manager.get_profanity_model_path(self.__profanity_model_ver) /
+                                   'vectorizer.joblib'):
+                self.__profanity_directory = self.__file_manager.get_profanity_model_path(self.__profanity_model_ver)
+
+
             else:
+                print('Profanity model not found, starting up profanity model...')
                 self.__startup_profanity_model()
-                self.__model_path = profanity_path / f'ver{self.__profanity_model_ver}' / 'model.joblib'
-                self.__vectorizer_path = profanity_path / f'ver{self.__profanity_model_ver}' / 'vectorizer.joblib'
+                self.__profanity_directory = self.__file_manager.get_profanity_model_path(self.__profanity_model_ver)
 
-            self.__model = load_file(self.__model_path,
-                                     joblib.load, 'rb',
-                                     True)
-            self.__vectorizer = load_file(self.__vectorizer_path,
-                                          joblib.load, 'rb',
-                                          True)
+                print('Profanity model started up')
+            self.__model_path = (self.__profanity_directory / 'model.joblib')
+            self.__vectorizer_path = (self.__profanity_directory / 'vectorizer.joblib')
+
+            self.__model = self.__file_manager.load_file(self.__model_path,
+                                                         joblib.load, 'rb',
+                                                         True)
+            self.__vectorizer = self.__file_manager.load_file(self.__vectorizer_path,
+                                                              joblib.load, 'rb',
+                                                              True)
 
 
     def __notify(self):
@@ -64,9 +71,27 @@ class ProfanityModule:
         return self.__text_prepar.prepare_text(elem,
                                                word_basing_method='stemming')
 
+    def __save_model(self, model_data: dict[str, Any]):
+        """
+        Saves model and its parts, updates profanity_directory variable
+
+        Args:
+            model_data: dict - dictionary with arbitrary model data
+        """
+        self.__file_manager.save_file(self.__file_manager.get_profanity_model_path(self.__profanity_model_ver) /
+                                      'model.joblib', self.__model, joblib.dump)
+
+        self.__file_manager.save_file(self.__file_manager.get_profanity_model_path(self.__profanity_model_ver) /
+                                      'vectorizer.joblib', self.__vectorizer, joblib.dump)
+
+        self.__file_manager.save_profanity_info(self.__profanity_model_ver, model_data)
+        self.__profanity_directory = self.__file_manager.get_profanity_model_path(self.__profanity_model_ver)
+
+
+
     def __prepare_data(self, profanity_rows: list[dict[str, int | str | dict]]) -> pd.DataFrame:
         """
-        Creates dataframe based on currently known data and new data.
+        Creates dataframe based on currently known data and new data
         Args:
             profanity_rows: list[dict[str, int | str]] - array of new data
         Returns:
@@ -113,7 +138,6 @@ class ProfanityModule:
         Train a profanity classification model with calibrated probabilities as a startup model.
 
         """
-        print('Start upping profanity model')
 
         dataframe = self.__prepare_data([])
 
@@ -124,7 +148,6 @@ class ProfanityModule:
 
         vectorizer = CountVectorizer()
         X_train_vec = vectorizer.fit_transform(X_train)
-        X_test_vec = vectorizer.transform(X_test)
 
         param_grid = {
             'C': np.array([0.001, 0.01, 0.1, 1., 10., 100.]),
@@ -156,31 +179,14 @@ class ProfanityModule:
         )
         final_clf.fit(X_train_vec, y_train)
 
-        y_pred = final_clf.predict(X_test_vec)
         self.__model = final_clf
         self.__vectorizer = vectorizer
-
         self.__profanity_model_ver = 1
-
-        os.makedirs(profanity_path / f'ver{self.__profanity_model_ver}')
-
-        self.__model_path = (profanity_path / f'ver{self.__profanity_model_ver}' /
-                             'model.joblib')
-
-        self.__vectorizer_path = (profanity_path / f'ver{self.__profanity_model_ver}' /
-                                  'vectorizer.joblib')
-
-        joblib.dump(self.__model, self.__model_path)
-        joblib.dump(self.__vectorizer, self.__vectorizer_path)
-
         model_data = {
             'learning_date': str(datetime.date.today()),
             'model_ver': self.__profanity_model_ver
         }
-
-        save_profanity_info(self.__profanity_model_ver, model_data,
-                            profanity_path / f'ver{self.__profanity_model_ver}' / 'model_info.json')
-
+        self.__save_model(model_data)
         self.__notify()
 
         print('Profanity model started up')
@@ -201,12 +207,25 @@ class ProfanityModule:
 
         return self.__vectorizer
 
+    def get_profanity_info(self) -> int:
+        try:
+
+            return self.__file_manager.load_file(
+                (self.__file_manager.get_profanity_model_path(self.__profanity_model_ver) /
+                 'model_info.json'),
+                json.load,
+                'r', False)
+
+        except Exception as e:
+            print(f'Error getting profanity ver: {str(e)}')
+            raise Exception('Error during configuration profanity loading')
+
     def attach(self, observer):
         if observer not in self.__observers:
             self.__observers.append(observer)
 
-    def post_learn(self, profanity_rows, text_analyzer: TextAnalyzer, save_model=False) -> dict[
-        str, dict[str, float] | float]:
+    def post_learn(self, profanity_rows, text_analyzer: TextAnalyzer, save_model=False) -> dict[str, dict[
+        str, float | int]] | None:
         """
         Train a profanity classification model with calibrated probabilities.
 
@@ -222,7 +241,6 @@ class ProfanityModule:
             dict|None - dictionary with metrics or None
         """
         dataframe = self.__prepare_data(profanity_rows)
-        print(profanity_rows)
         rows = []
         for item in profanity_rows:
             text_to_process = item['text_after_processing']
@@ -282,25 +300,11 @@ class ProfanityModule:
 
             self.__profanity_model_ver += 1
 
-            os.makedirs(profanity_path / f'ver{self.__profanity_model_ver}')
-
-            self.__model_path = (profanity_path / f'ver{self.__profanity_model_ver}' /
-                                 'model.joblib')
-
-            self.__vectorizer_path = (profanity_path / f'ver{self.__profanity_model_ver}' /
-                                      'vectorizer.joblib')
-
-            joblib.dump(self.__model, self.__model_path)
-            joblib.dump(self.__vectorizer, self.__vectorizer_path)
-
             model_data = {
                 'learning_date': str(datetime.date.today()),
                 'model_ver': self.__profanity_model_ver
             }
-
-            save_profanity_info(self.__profanity_model_ver, model_data,
-                                profanity_path / f'ver{self.__profanity_model_ver}' / 'model_info.json')
-
+            self.__save_model(model_data)
             self.__notify()
 
             for item in rows:
@@ -311,5 +315,3 @@ class ProfanityModule:
             return
 
         return test_metrics
-
-

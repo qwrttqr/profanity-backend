@@ -4,7 +4,6 @@ from db.utils import select_from_table, build_where_clauses
 from db.utils.statemenents import select_table
 from db.db_models.pydantic import AnswerPost
 from db.db_models.sqlalchemy.text import Text
-from src.utils.file_work import files
 from src.utils.post_learn.splitter import split
 
 router = APIRouter(prefix='/analyze', tags=['model interaction'])
@@ -214,11 +213,13 @@ def update_sematic_model(request: Request, semantic_rows: AnswerPost,  threshold
 
 
 @router.get('/get_models_info', status_code=200)
-def get_models_info():
+def get_models_info(request: Request):
     try:
+        profanity_module = request.app.state.profanity_module
+        semantic_module = request.app.state.semantic_module
 
-        return {'profanity_model_info': files['profanity_model_info'],
-                'semantic_model_info': files['semantic_model_info']}
+        return {'profanity_model_info': profanity_module.get_profanity_info(),
+                'semantic_model_info': semantic_module}
     except Exception as e:
         print(f'Error returning model info objects: {str(e)}')
 

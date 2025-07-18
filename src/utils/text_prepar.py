@@ -1,8 +1,7 @@
 import re
-from .file_work import files
 from pymorphy2 import MorphAnalyzer
 from nltk.stem.snowball import SnowballStemmer
-
+from .file_work import FileManager
 
 
 
@@ -34,10 +33,11 @@ class TextPreparation:
 
     def __init__(self):
         if not hasattr(self, 'initialized'):
-            self.__deobfuscation_table = files['deobfuscation_table']
+            self.__file_manager = FileManager()
+            self.__deobfuscation_table = self.__file_manager.get_deobfuscation_table()
             self.__morpher = MorphAnalyzer()
             self.__stemmer = SnowballStemmer(language='russian')
-            self.__n_grams = files['n-grams']
+            self.__n_grams = self.__file_manager.get_n_grams_file()
             self.initialized = True
 
     def prepare_text(self,
