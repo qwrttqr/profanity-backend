@@ -101,7 +101,6 @@ class TextAnalyzer:
     def update_semantic(self):
         self.__semantic_tokenizer = self.__semantic_module.get_tokenizer()
         self.__semantic_model = self.__semantic_module.get_model()
-        new = self.__semantic_model
 
     def get_semantic_labels(self, text: str, threshold: float,
                             return_classes: bool = True) -> list[int]:
@@ -121,9 +120,7 @@ class TextAnalyzer:
         if isinstance(text, str):
             proba = proba[0]
 
-        probas = [(1 - proba[0]) * proba[-1]] + list(proba)[1:]
-        probas = [int(i >= threshold) for i in probas]
-
+        probas = [int(i >= threshold) for i in proba]
         return probas
 
     def __analyze_toxicity(self, text: str, threshold: float) \
@@ -143,8 +140,8 @@ class TextAnalyzer:
         text_labels = {
             'toxic': probas[0],
             'insult': probas[1],
-            'threat': probas[3],
-            'dangerous': probas[4]
+            'threat': probas[2],
+            'dangerous': probas[3]
         }
 
         return text_labels
