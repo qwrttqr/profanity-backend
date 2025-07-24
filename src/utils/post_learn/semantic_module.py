@@ -386,7 +386,7 @@ class SemanticModule:
         if observer not in self.__observers:
             self.__observers.append(observer)
 
-    def get_profanity_info(self) -> int:
+    def get_semantic_info(self) -> int:
         try:
 
             return self.__file_manager.load_file(

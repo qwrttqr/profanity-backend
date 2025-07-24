@@ -304,6 +304,7 @@ class ProfanityModule:
                 'learning_date': str(datetime.date.today()),
                 'model_ver': self.__profanity_model_ver
             }
+
             self.__save_model(model_data)
             self.__notify()
 

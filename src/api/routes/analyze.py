@@ -219,7 +219,7 @@ def get_models_info(request: Request):
         semantic_module = request.app.state.semantic_module
 
         return {'profanity_model_info': profanity_module.get_profanity_info(),
-                'semantic_model_info': semantic_module}
+                'semantic_model_info': semantic_module.get_semantic_info()}
     except Exception as e:
         print(f'Error returning model info objects: {str(e)}')
 
