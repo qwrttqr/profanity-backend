@@ -58,7 +58,6 @@ class ProfanityModule:
                                                               joblib.load, 'rb',
                                                               True)
 
-
     def __notify(self):
         for item in self.__observers:
             try:
@@ -78,6 +77,7 @@ class ProfanityModule:
         Args:
             model_data: dict - dictionary with arbitrary model data
         """
+        print(model_data)
         self.__file_manager.save_file(self.__file_manager.get_profanity_model_path(self.__profanity_model_ver) /
                                       'model.joblib', self.__model, joblib.dump)
 
@@ -86,8 +86,6 @@ class ProfanityModule:
 
         self.__file_manager.save_profanity_info(self.__profanity_model_ver, model_data)
         self.__profanity_directory = self.__file_manager.get_profanity_model_path(self.__profanity_model_ver)
-
-
 
     def __prepare_data(self, profanity_rows: list[dict[str, int | str | dict]]) -> pd.DataFrame:
         """

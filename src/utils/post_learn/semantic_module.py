@@ -37,6 +37,7 @@ class SemanticModule:
             if os.path.exists(self.__file_manager.get_semantic_model_path(self.__semantic_model_ver)):
 
                 self.__semantic_directory = self.__file_manager.get_semantic_model_path(self.__semantic_model_ver)
+                print(self.__semantic_directory, type(self.__semantic_directory))
 
                 self.__tokenizer = AutoTokenizer.from_pretrained(self.__semantic_directory)
                 self.__model = AutoModelForSequenceClassification.from_pretrained(
@@ -73,8 +74,11 @@ class SemanticModule:
             Args:
                 model_data: dict - dictionary with arbitrary model data
         """
-        self.__file_manager.save_file(self.__semantic_directory, self.__model.save_pretrained)
-        self.__file_manager.save_file(self.__semantic_directory, self.__tokenizer.save_pretrained)
+        print(self.__file_manager.get_semantic_model_path(self.__semantic_model_ver))
+        self.__file_manager.save_file(self.__file_manager.get_semantic_model_path(self.__semantic_model_ver), None,
+                                      self.__model.save_pretrained)
+        self.__file_manager.save_file(self.__file_manager.get_semantic_model_path(self.__semantic_model_ver), None,
+                                      self.__tokenizer.save_pretrained)
 
         self.__file_manager.save_semantic_info(self.__semantic_model_ver, model_data)
         self.__semantic_directory = self.__file_manager.get_semantic_model_path(self.__semantic_model_ver)
@@ -89,7 +93,6 @@ class SemanticModule:
         print(select_from_table(statement=select_from_model_answers_for_semantic))
         return pd.DataFrame(select_from_table(statement=select_from_model_answers_for_semantic))
 
-    # TODO recreate with actual 4 labels
     def __prepare_data(self, semantic_rows: list[dict[str, int | str | dict]],
                        text_analyzer,
                        threshold: float) -> pd.DataFrame:
@@ -106,12 +109,8 @@ class SemanticModule:
         data = {}
 
         for item in rows:
-            model_lab = text_analyzer.get_semantic_labels(item['text_after_processing'],
-                                                          threshold=threshold)
-
-            label = [1 - item['toxic_class'],
+            label = [item['toxic_class'],
                      item['insult_class'],
-                     model_lab[2],
                      item['threat_class'],
                      item['dangerous_class']]
 
@@ -121,11 +120,8 @@ class SemanticModule:
             }
 
         for item in semantic_rows:
-            model_lab = text_analyzer.get_semantic_labels(data[item['id']]['text'],
-                                                          threshold=threshold)
-            label = [1 - item['toxic_class'],
+            label = [item['toxic_class'],
                      item['insult_class'],
-                     model_lab[2],
                      item['threat_class'],
                      item['dangerous_class']]
 
@@ -402,7 +398,7 @@ class SemanticModule:
     def post_learn(self, semantic_rows,
                    text_analyzer: TextAnalyzer,
                    threshold: float = 0.5,
-                   save_metrics: bool = False):
+                   save_model: bool = False):
         """
         Train a semantic classification model by given rows
         """
@@ -510,7 +506,7 @@ class SemanticModule:
         labels = predictions.label_ids
 
         # Select only the 4 relevant classes
-        class_indices = [0, 1, 3, 4]  # toxic, insult, threat, dangerous
+        class_indices = [0, 1, 2, 3]  # toxic, insult, threat, dangerous
         filtered_labels = labels[:, class_indices]
         filtered_preds = preds[:, class_indices]
 
@@ -523,8 +519,8 @@ class SemanticModule:
         )
 
         metrics = SemanticModule.__transform_metrics(eval_results, report, filtered_labels)
-
-        if save_metrics:
+        print(save_model)
+        if save_model:
             device = "cuda" if torch.cuda.is_available() else "cpu"
             self.__model.to(device)
 
@@ -536,14 +532,7 @@ class SemanticModule:
             gc.collect()
             torch.cuda.empty_cache()
 
-            self.__model.save_pretrained(self.__semantic_directory)
-            self.__tokenizer.save_pretrained(self.__semantic_directory)
 
-            del self.__model
-            del self.__tokenizer
-
-            self.__model = AutoModelForSequenceClassification.from_pretrained(self.__semantic_directory)
-            self.__tokenizer = AutoTokenizer.from_pretrained(self.__semantic_directory)
 
             device = "cuda" if torch.cuda.is_available() else "cpu"
             self.__model.to(device)
@@ -551,7 +540,14 @@ class SemanticModule:
                 'learning_date': str(datetime.date.today()),
                 'model_ver': self.__semantic_model_ver
             }
+            print(model_data)
             self.__save_model(model_data)
+
+            del self.__model
+            del self.__tokenizer
+
+            self.__model = AutoModelForSequenceClassification.from_pretrained(self.__semantic_directory)
+            self.__tokenizer = AutoTokenizer.from_pretrained(self.__semantic_directory)
 
             self.__notify()
 
@@ -561,8 +557,8 @@ class SemanticModule:
                 text_labels = {
                     'toxic': labels[0],
                     'insult': labels[1],
-                    'threat': labels[3],
-                    'dangerous': labels[4]
+                    'threat': labels[2],
+                    'dangerous': labels[3]
                 }
 
                 semantic_id = get_id(table_type='semantic_table',

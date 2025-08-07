@@ -1,8 +1,8 @@
 {
   "profanity_model": {
-    "ver": 16
+    "ver": 12
   },
   "semantic_model": {
-    "ver": 1
+    "ver": 2
   }
 }
