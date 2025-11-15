@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from db.db_models.base_class import Base
+from db.db_models.sqlalchemy.base_class import Base
 
 
 class Answer(Base):
@@ -19,6 +19,7 @@ class Answer(Base):
     texts: Mapped[list['Text']] = relationship(back_populates='answers')
 
     def __repr__(self) -> str:
+
         return f'Answer(id={self.id!r}, \
                 toxic_class={self.toxic_class!r},\
                 insult_class={self.insult_class!r},\

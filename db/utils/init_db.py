@@ -8,10 +8,10 @@ from sqlalchemy.exc import DatabaseError
 db_engine: Engine | None = None
 
 def connect_db():
-    '''
-    create db engine connection
-    :return: session
-    '''
+    """
+    Returns:
+        db engine: Engine - database engine
+    """
     dotenv.load_dotenv()
     database_username = os.environ.get('DB_USERNAME')
     database_password = os.environ.get('DB_PASSWORD')
@@ -23,11 +23,17 @@ def connect_db():
                 f'{database_password}@localhost:3306/profanity-neuro-db',
                 echo=True
             )
+
         return db_engine
     except:
             raise DatabaseError('Error connection to db')
 
 def get_db_engine() -> Engine:
+    """
+    Returns:
+        db engine: Engine - database engine
+    """
     if db_engine is None:
         connect_db()
+
     return db_engine

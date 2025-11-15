@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from db.db_models.base_class import Base
+from db.db_models.sqlalchemy.base_class import Base
 
 
 class SemanticClasses(Base):
@@ -15,6 +15,7 @@ class SemanticClasses(Base):
     texts: Mapped[list['Text']] = relationship(back_populates='semantic')
 
     def __repr__(self) -> str:
+
         return f'Semantic(id={self.id!r}, \
                     toxic_class={self.toxic_class!r}, \
                     insuilt_class={self.insult_class!r}, \

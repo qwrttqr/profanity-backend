@@ -1,6 +1,5 @@
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-
-from db.db_models.base_class import Base
+from db.db_models.sqlalchemy.base_class import Base
 
 
 class ProfanityClasses(Base):
@@ -12,5 +11,6 @@ class ProfanityClasses(Base):
     texts: Mapped[list['Text']] = relationship(back_populates="profanity")
 
     def __repr__(self) -> str:
+
         return f'Text(id={self.id!r}, \
                     profanity_class={self.profanity_class!r}'
