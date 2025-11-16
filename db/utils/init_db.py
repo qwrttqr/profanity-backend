@@ -13,14 +13,12 @@ def connect_db():
         db engine: Engine - database engine
     """
     dotenv.load_dotenv()
-    database_username = os.environ.get('DB_USERNAME')
-    database_password = os.environ.get('DB_PASSWORD')
+    database_con_string = os.getenv('DB_CONNECTION')
     global db_engine
     try:
         if db_engine is None:
             db_engine= create_engine(
-                f'mysql+pymysql://{database_username}:'
-                f'{database_password}@localhost:3306/profanity-neuro-db',
+                database_con_string,
                 echo=True
             )
 

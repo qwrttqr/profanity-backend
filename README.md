@@ -2,7 +2,7 @@
 
 ## Требования
 1. Python версии 3.10.11
-2. Зависимости (устанавлиется с `pip install -r requierements.txt`)
+2. Зависимости (устанавлиется с `pip install -r requierements-win.txt`)
 ## Запуск
 Запуск из `main.py` файла
 `fastapi dev src/main.py`
